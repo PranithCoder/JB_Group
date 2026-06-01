@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { db } from '../lib/db';
-import { Plus, Search, Edit2, Trash2, Eye, X, Check, RefreshCw } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Eye, X, Check, RefreshCw, Users } from 'lucide-react';
 
 export default function CustomerModule({ activeRole, triggerUpdate }) {
   const [customers, setCustomers] = useState(db.getCustomers());

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { db } from '../lib/db';
-import { Search, Plus, Edit2, Trash2, X, AlertTriangle, Eye, RefreshCw, Calendar } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, AlertTriangle, Eye, RefreshCw, Calendar, ShoppingBag } from 'lucide-react';
 
 export default function OrderModule({ activeRole, triggerUpdate }) {
   const [orders, setOrders] = useState(db.getOrders());
