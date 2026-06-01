@@ -70,9 +70,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   });
 
   const openAddModal = () => {
-    const firstCust = customers[0];
     setFormData({
-      customer_id: firstCust?.id || '',
+      customer_id: '',
       delivery_date: new Date('2026-06-03').toISOString().split('T')[0], // Default 2 days out
       service_type: 'Stitching',
       note: '',
@@ -80,7 +79,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       amount: '',
       payment_status: 'unpaid'
     });
-    setCustSearch(firstCust ? `${firstCust.name} (${firstCust.contact})` : '');
+    setCustSearch('');
     setEditingOrder(null);
     setShowFormModal(true);
   };
@@ -461,12 +460,14 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     {showCustDropdown && (
                       <div className="dropdown-menu-custom">
                         {customers.filter(c => 
+                          !custSearch ||
                           (c.name || '').toLowerCase().includes(custSearch.toLowerCase()) ||
                           (c.contact || '').includes(custSearch)
                         ).length === 0 ? (
                           <div className="dropdown-item-custom empty">No customers found</div>
                         ) : (
                           customers.filter(c => 
+                            !custSearch ||
                             (c.name || '').toLowerCase().includes(custSearch.toLowerCase()) ||
                             (c.contact || '').includes(custSearch)
                           ).map(c => (
