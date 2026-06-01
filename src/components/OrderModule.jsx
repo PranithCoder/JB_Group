@@ -131,21 +131,32 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         message: 'Critical edit (Delivery Date/Amount change) sent to Manager approvals queue.'
       });
       setTimeout(() => setNotification(null), 4000);
+      setShowFormModal(false);
+      refreshList();
+      triggerUpdate();
     } else {
       if (!editingOrder && result.data) {
         setNewlyBookedOrder(result.data);
         setShowShareModal(true);
+        setShowFormModal(false);
+        refreshList();
+        // NOTE: triggerUpdate() is deferred until the share modal is closed to prevent component unmounting!
       } else {
         setNotification({
           type: 'success',
           message: `Order saved successfully.`
         });
         setTimeout(() => setNotification(null), 4000);
+        setShowFormModal(false);
+        refreshList();
+        triggerUpdate();
       }
     }
+  };
 
-    setShowFormModal(false);
-    refreshList();
+  const handleCloseShareModal = () => {
+    setShowShareModal(false);
+    setNewlyBookedOrder(null);
     triggerUpdate();
   };
 
@@ -708,7 +719,7 @@ Thank you for choosing JB Groups Tailoring Shop!`;
             <div className="modal-content" style={{ maxWidth: '440px' }}>
               <div className="modal-header">
                 <h3>Receipt Delivery Options</h3>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowShareModal(false)}>
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={handleCloseShareModal}>
                   <X size={20} />
                 </button>
               </div>
@@ -725,7 +736,7 @@ Thank you for choosing JB Groups Tailoring Shop!`;
                     rel="noopener noreferrer" 
                     className="btn btn-primary"
                     style={{ textDecoration: 'none', justifyContent: 'center', backgroundColor: '#25D366' }}
-                    onClick={() => setShowShareModal(false)}
+                    onClick={handleCloseShareModal}
                   >
                     Send Receipt via WhatsApp
                   </a>
@@ -735,7 +746,10 @@ Thank you for choosing JB Groups Tailoring Shop!`;
                     type="button" 
                     className="btn btn-secondary"
                     style={{ justifyContent: 'center', border: '1px solid #cbd5e1' }}
-                    onClick={handlePrint}
+                    onClick={() => {
+                      handlePrint();
+                      handleCloseShareModal();
+                    }}
                   >
                     Print POS Receipt Slip
                   </button>
@@ -744,7 +758,7 @@ Thank you for choosing JB Groups Tailoring Shop!`;
                     type="button" 
                     className="btn btn-secondary"
                     style={{ justifyContent: 'center', color: 'var(--text-muted)', border: 'none' }}
-                    onClick={() => setShowShareModal(false)}
+                    onClick={handleCloseShareModal}
                   >
                     No receipt needed
                   </button>
