@@ -13,6 +13,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   const [notification, setNotification] = useState(null);
   const [custSearch, setCustSearch] = useState('');
   const [showCustDropdown, setShowCustDropdown] = useState(false);
+  const [newlyBookedOrder, setNewlyBookedOrder] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -128,17 +130,23 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         type: 'warning',
         message: 'Critical edit (Delivery Date/Amount change) sent to Manager approvals queue.'
       });
+      setTimeout(() => setNotification(null), 4000);
     } else {
-      setNotification({
-        type: 'success',
-        message: `Order saved successfully.`
-      });
+      if (!editingOrder && result.data) {
+        setNewlyBookedOrder(result.data);
+        setShowShareModal(true);
+      } else {
+        setNotification({
+          type: 'success',
+          message: `Order saved successfully.`
+        });
+        setTimeout(() => setNotification(null), 4000);
+      }
     }
 
     setShowFormModal(false);
     refreshList();
     triggerUpdate();
-    setTimeout(() => setNotification(null), 4000);
   };
 
   const handleDelete = (id) => {
@@ -586,6 +594,167 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
           </div>
         </div>
       )}
+
+      {/* Share / Receipt Options Modal */}
+      {showShareModal && newlyBookedOrder && (() => {
+        const customer = customers.find(c => c.id === newlyBookedOrder.customer_id) || { name: 'Valued Customer', contact: '' };
+        const cleanPhone = (customer.contact || '').replace(/[^0-9]/g, '');
+        const messageText = `Dear ${customer.name}, your tailor booking is confirmed!
+Order No: ${newlyBookedOrder.order_no}
+Service: ${newlyBookedOrder.service_type}
+Price: $${Number(newlyBookedOrder.amount).toFixed(2)} (${newlyBookedOrder.payment_status === 'paid' ? 'Paid' : 'Unpaid'})
+Delivery Due: ${newlyBookedOrder.delivery_date}
+Notes: ${newlyBookedOrder.note || '—'}
+Thank you for choosing JB Groups Tailoring Shop!`;
+
+        const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
+
+        const handlePrint = () => {
+          const printWindow = window.open('', '_blank', 'width=600,height=600');
+          printWindow.document.write(`
+            <html>
+              <head>
+                <title>Receipt - ${newlyBookedOrder.order_no}</title>
+                <style>
+                  body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 20px; color: #333; line-height: 1.5; }
+                  .receipt-box { max-width: 400px; margin: auto; border: 1px dashed #bbb; padding: 20px; border-radius: 8px; }
+                  .title { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 5px; letter-spacing: 1px; }
+                  .subtitle { text-align: center; font-size: 12px; color: #666; margin-bottom: 20px; }
+                  .divider { border-top: 1px dashed #bbb; margin: 15px 0; }
+                  .info-row { display: flex; justify-content: space-between; font-size: 14px; margin: 6px 0; }
+                  .label { color: #666; }
+                  .value { font-weight: 600; }
+                  .total { font-size: 18px; font-weight: bold; }
+                  .footer-msg { text-align: center; font-size: 11px; color: #777; margin-top: 25px; }
+                  @media print {
+                    body { padding: 0; }
+                    .receipt-box { border: none; }
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="receipt-box">
+                  <div class="title">JB GROUPS</div>
+                  <div class="subtitle">Bespoke Tailoring & Alteration Shop</div>
+                  
+                  <div class="info-row">
+                    <span class="label">Order Number:</span>
+                    <span class="value">${newlyBookedOrder.order_no}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Date Booked:</span>
+                    <span class="value">June 1, 2026</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Estimated Delivery:</span>
+                    <span class="value">${newlyBookedOrder.delivery_date}</span>
+                  </div>
+                  
+                  <div class="divider"></div>
+                  
+                  <div class="info-row">
+                    <span class="label">Client Name:</span>
+                    <span class="value">${customer.name}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Contact No:</span>
+                    <span class="value">${customer.contact}</span>
+                  </div>
+                  
+                  <div class="divider"></div>
+                  
+                  <div class="info-row">
+                    <span class="label">Service Category:</span>
+                    <span class="value">${newlyBookedOrder.service_type}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Fabric / Notes:</span>
+                    <span class="value" style="text-align: right; max-width: 220px; word-break: break-all;">
+                      ${newlyBookedOrder.note || 'None'}
+                    </span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Payment status:</span>
+                    <span class="value">${newlyBookedOrder.payment_status.toUpperCase()}</span>
+                  </div>
+                  
+                  <div class="divider"></div>
+                  
+                  <div class="info-row total">
+                    <span class="label">TOTAL PRICE:</span>
+                    <span class="value">$${Number(newlyBookedOrder.amount).toFixed(2)}</span>
+                  </div>
+                  
+                  <div class="footer-msg">
+                    Thank you for your custom!<br>
+                    Please present this receipt for pickup.<br>
+                    * Fits guaranteed up to 30 days *
+                  </div>
+                </div>
+                <script>
+                  window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 500);
+                  };
+                </script>
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
+        };
+
+        return (
+          <div className="modal-overlay" style={{ zIndex: 110 }}>
+            <div className="modal-content" style={{ maxWidth: '440px' }}>
+              <div className="modal-header">
+                <h3>Receipt Delivery Options</h3>
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowShareModal(false)}>
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="modal-body" style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                  Order <strong>{newlyBookedOrder.order_no}</strong> for <strong>{customer.name}</strong> has been booked successfully!
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                  
+                  {/* WhatsApp click-to-chat */}
+                  <a 
+                    href={waLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="btn btn-primary"
+                    style={{ textDecoration: 'none', justifyContent: 'center', backgroundColor: '#25D366' }}
+                    onClick={() => setShowShareModal(false)}
+                  >
+                    Send Receipt via WhatsApp
+                  </a>
+
+                  {/* Print POS slip */}
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary"
+                    style={{ justifyContent: 'center', border: '1px solid #cbd5e1' }}
+                    onClick={handlePrint}
+                  >
+                    Print POS Receipt Slip
+                  </button>
+
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary"
+                    style={{ justifyContent: 'center', color: 'var(--text-muted)', border: 'none' }}
+                    onClick={() => setShowShareModal(false)}
+                  >
+                    No receipt needed
+                  </button>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
