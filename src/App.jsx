@@ -106,7 +106,7 @@ function App() {
           <OrderModule 
             activeRole={activeRole} 
             triggerUpdate={triggerUpdate} 
-            key={`${dbUpdate}-${activeRole}`} 
+            key={`orders-${activeRole}`} 
           />
         );
       case 'staff':
