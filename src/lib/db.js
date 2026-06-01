@@ -143,7 +143,11 @@ const safeGetLocalStorage = (key, defaultVal) => {
     if (!val || val === 'undefined') {
       return defaultVal;
     }
-    return JSON.parse(val);
+    const parsed = JSON.parse(val);
+    if (parsed === null || parsed === undefined) {
+      return defaultVal;
+    }
+    return parsed;
   } catch (e) {
     console.error(`Error parsing localStorage key "${key}":`, e);
     return defaultVal;
@@ -152,10 +156,12 @@ const safeGetLocalStorage = (key, defaultVal) => {
 
 // Helper to initialize local storage safely (seeding each table individually if missing or malformed)
 const initLocalStorage = () => {
+  const isFirstRun = !localStorage.getItem('jb_db_initialized');
+
   const checkAndSeed = (key, defaultVal) => {
     try {
       const val = localStorage.getItem(key);
-      if (!val || val === 'undefined' || JSON.parse(val).length === 0) {
+      if (!val || val === 'undefined' || (isFirstRun && JSON.parse(val).length === 0)) {
         localStorage.setItem(key, JSON.stringify(defaultVal));
       }
     } catch (e) {
@@ -176,6 +182,8 @@ const initLocalStorage = () => {
   if (!localStorage.getItem('jb_active_role')) {
     localStorage.setItem('jb_active_role', 'manager');
   }
+
+  localStorage.setItem('jb_db_initialized', 'true');
 };
 
 initLocalStorage();
