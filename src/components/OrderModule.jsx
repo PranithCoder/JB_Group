@@ -102,54 +102,59 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
 
   const handleSave = (e) => {
     e.preventDefault();
-    if (!formData.customer_id) {
-      alert('Please search and select a valid customer from the dropdown list.');
-      return;
-    }
-    if (!formData.delivery_date || !formData.amount) {
-      alert('Required fields are missing.');
-      return;
-    }
+    try {
+      if (!formData.customer_id) {
+        alert('Please search and select a valid customer from the dropdown list.');
+        return;
+      }
+      if (!formData.delivery_date || !formData.amount) {
+        alert('Required fields are missing.');
+        return;
+      }
 
-    const payload = {
-      ...(editingOrder ? { id: editingOrder.id } : {}),
-      customer_id: formData.customer_id,
-      delivery_date: formData.delivery_date,
-      service_type: formData.service_type,
-      note: formData.note,
-      status: formData.status,
-      amount: Number(formData.amount),
-      payment_status: formData.payment_status
-    };
+      const payload = {
+        ...(editingOrder ? { id: editingOrder.id } : {}),
+        customer_id: formData.customer_id,
+        delivery_date: formData.delivery_date,
+        service_type: formData.service_type,
+        note: formData.note,
+        status: formData.status,
+        amount: Number(formData.amount),
+        payment_status: formData.payment_status
+      };
 
-    const result = db.saveOrder(payload);
+      const result = db.saveOrder(payload);
 
-    if (result.status === 'pending_approval') {
-      setNotification({
-        type: 'warning',
-        message: 'Critical edit (Delivery Date/Amount change) sent to Manager approvals queue.'
-      });
-      setTimeout(() => setNotification(null), 4000);
-      setShowFormModal(false);
-      refreshList();
-      triggerUpdate();
-    } else {
-      if (!editingOrder && result.data) {
-        setNewlyBookedOrder(result.data);
-        setShowShareModal(true);
-        setShowFormModal(false);
-        refreshList();
-        // NOTE: triggerUpdate() is deferred until the share modal is closed to prevent component unmounting!
-      } else {
+      if (result.status === 'pending_approval') {
         setNotification({
-          type: 'success',
-          message: `Order saved successfully.`
+          type: 'warning',
+          message: 'Critical edit (Delivery Date/Amount change) sent to Manager approvals queue.'
         });
         setTimeout(() => setNotification(null), 4000);
         setShowFormModal(false);
         refreshList();
         triggerUpdate();
+      } else {
+        if (!editingOrder && result.data) {
+          setNewlyBookedOrder(result.data);
+          setShowShareModal(true);
+          setShowFormModal(false);
+          refreshList();
+          // NOTE: triggerUpdate() is deferred until the share modal is closed to prevent component unmounting!
+        } else {
+          setNotification({
+            type: 'success',
+            message: `Order saved successfully.`
+          });
+          setTimeout(() => setNotification(null), 4000);
+          setShowFormModal(false);
+          refreshList();
+          triggerUpdate();
+        }
       }
+    } catch (err) {
+      console.error("Error in handleSave:", err);
+      alert("Error saving order: " + err.message);
     }
   };
 
@@ -474,7 +479,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                             <div 
                               key={c.id} 
                               className={`dropdown-item-custom ${formData.customer_id === c.id ? 'selected' : ''}`}
-                              onClick={() => {
+                              onMouseDown={() => {
                                 setFormData(prev => ({ ...prev, customer_id: c.id }));
                                 setCustSearch(`${c.name} (${c.contact})`);
                                 setShowCustDropdown(false);
