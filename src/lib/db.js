@@ -136,19 +136,45 @@ const DEFAULT_APPROVALS = [
   }
 ];
 
-// Helper to initialize local storage
+// Helper function to safely read from local storage without crashing
+const safeGetLocalStorage = (key, defaultVal) => {
+  try {
+    const val = localStorage.getItem(key);
+    if (!val || val === 'undefined') {
+      return defaultVal;
+    }
+    return JSON.parse(val);
+  } catch (e) {
+    console.error(`Error parsing localStorage key "${key}":`, e);
+    return defaultVal;
+  }
+};
+
+// Helper to initialize local storage safely (seeding each table individually if missing or malformed)
 const initLocalStorage = () => {
-  if (!localStorage.getItem('jb_users')) {
-    localStorage.setItem('jb_users', JSON.stringify(DEFAULT_USERS));
-    localStorage.setItem('jb_customers', JSON.stringify(DEFAULT_CUSTOMERS));
-    localStorage.setItem('jb_orders', JSON.stringify(DEFAULT_ORDERS));
-    localStorage.setItem('jb_staff', JSON.stringify(DEFAULT_STAFF));
-    localStorage.setItem('jb_attendance', JSON.stringify(seedAttendance()));
-    localStorage.setItem('jb_inventory', JSON.stringify(DEFAULT_INVENTORY));
-    localStorage.setItem('jb_purchases', JSON.stringify(DEFAULT_PURCHASES));
-    localStorage.setItem('jb_complaints', JSON.stringify(DEFAULT_COMPLAINTS));
-    localStorage.setItem('jb_approvals', JSON.stringify(DEFAULT_APPROVALS));
-    localStorage.setItem('jb_active_role', 'manager'); // Default active role to test with
+  const checkAndSeed = (key, defaultVal) => {
+    try {
+      const val = localStorage.getItem(key);
+      if (!val || val === 'undefined' || JSON.parse(val).length === 0) {
+        localStorage.setItem(key, JSON.stringify(defaultVal));
+      }
+    } catch (e) {
+      localStorage.setItem(key, JSON.stringify(defaultVal));
+    }
+  };
+
+  checkAndSeed('jb_users', DEFAULT_USERS);
+  checkAndSeed('jb_customers', DEFAULT_CUSTOMERS);
+  checkAndSeed('jb_orders', DEFAULT_ORDERS);
+  checkAndSeed('jb_staff', DEFAULT_STAFF);
+  checkAndSeed('jb_attendance', seedAttendance());
+  checkAndSeed('jb_inventory', DEFAULT_INVENTORY);
+  checkAndSeed('jb_purchases', DEFAULT_PURCHASES);
+  checkAndSeed('jb_complaints', DEFAULT_COMPLAINTS);
+  checkAndSeed('jb_approvals', DEFAULT_APPROVALS);
+
+  if (!localStorage.getItem('jb_active_role')) {
+    localStorage.setItem('jb_active_role', 'manager');
   }
 };
 
@@ -171,7 +197,7 @@ export const db = {
   // Customers Module
   // ----------------------------------------------------
   getCustomers() {
-    return JSON.parse(localStorage.getItem('jb_customers')) || [];
+    return safeGetLocalStorage('jb_customers', []);
   },
 
   saveCustomer(customer) {
@@ -232,7 +258,7 @@ export const db = {
   // Orders Module
   // ----------------------------------------------------
   getOrders() {
-    const orders = JSON.parse(localStorage.getItem('jb_orders')) || [];
+    const orders = safeGetLocalStorage('jb_orders', []);
     const customers = this.getCustomers();
     return orders.map(ord => ({
       ...ord,
@@ -242,7 +268,7 @@ export const db = {
 
   saveOrder(order) {
     const role = this.getActiveRole();
-    const list = JSON.parse(localStorage.getItem('jb_orders')) || [];
+    const list = safeGetLocalStorage('jb_orders', []);
 
     if (order.id) {
       const original = list.find(o => o.id === order.id);
@@ -334,7 +360,7 @@ export const db = {
   deleteOrder(id) {
     const role = this.getActiveRole();
     if (role === 'officer') {
-      const o = (JSON.parse(localStorage.getItem('jb_orders')) || []).find(ord => ord.id === id);
+      const o = this.getOrders().find(ord => ord.id === id);
       const app = {
         id: 'appr-' + Date.now(),
         request_type: 'Delete Order Record',
@@ -356,7 +382,7 @@ export const db = {
       return { status: 'pending_approval', approvalId: app.id };
     }
 
-    let list = JSON.parse(localStorage.getItem('jb_orders')) || [];
+    let list = safeGetLocalStorage('jb_orders', []);
     list = list.filter(o => o.id !== id);
     localStorage.setItem('jb_orders', JSON.stringify(list));
     window.dispatchEvent(new Event('jb_database_updated'));
@@ -367,7 +393,7 @@ export const db = {
   // Staff & Attendance Module
   // ----------------------------------------------------
   getStaff() {
-    return JSON.parse(localStorage.getItem('jb_staff')) || [];
+    return safeGetLocalStorage('jb_staff', []);
   },
 
   saveStaff(employee) {
@@ -388,7 +414,7 @@ export const db = {
   },
 
   getAttendance() {
-    return JSON.parse(localStorage.getItem('jb_attendance')) || [];
+    return safeGetLocalStorage('jb_attendance', []);
   },
 
   saveAttendance(record) {
@@ -421,12 +447,11 @@ export const db = {
   },
 
   generateMonthlyPayroll(monthYearString) {
-    // monthYearString format "2026-05"
     const staff = this.getStaff();
     const attendance = this.getAttendance();
     
     // Filter attendance for the selected month (starts with monthYearString)
-    const monthRecords = attendance.filter(a => a.date.startsWith(monthYearString));
+    const monthRecords = attendance.filter(a => a.date && a.date.startsWith(monthYearString));
 
     return staff.map(emp => {
       const empAttendance = monthRecords.filter(a => a.staff_id === emp.id);
@@ -444,13 +469,8 @@ export const db = {
         }
       });
 
-      // Simple payroll formula: salary = (Basic Salary / 30 / 8) * total hours worked
-      // Plus overtime: any hours worked in a day > 8, or hours over a limit.
-      // For this demo: Overtime is when daily hours > 8. Total hours includes overtime hours.
-      // Let's assume hourly rate is (Basic Salary / 240) [where 240 = 30 * 8].
-      const hourlyRate = emp.salary / 240;
+      const hourlyRate = (emp.salary || 0) / 240;
       
-      // Calculate overtime: hours worked beyond 8 in Present days.
       let overtimeHours = 0;
       empAttendance.forEach(a => {
         if (a.status === 'Present' && Number(a.hours_worked) > 8) {
@@ -458,13 +478,11 @@ export const db = {
         }
       });
 
-      // Overtime premium is 1.5x hourly rate
       const basePay = totalHours * hourlyRate;
-      const overtimePay = overtimeHours * (hourlyRate * 0.5); // Add the 0.5x premium
+      const overtimePay = overtimeHours * (hourlyRate * 0.5); 
       
-      // Deductions: if absent without leave_type (i.e. unpaid leave)
       let unpaidAbsences = empAttendance.filter(a => a.status === 'Absent' && !a.leave_type).length;
-      const deductionPerDay = emp.salary / 30;
+      const deductionPerDay = (emp.salary || 0) / 30;
       const deductions = unpaidAbsences * deductionPerDay;
 
       const netPay = Math.max(0, basePay + overtimePay - deductions);
@@ -473,7 +491,7 @@ export const db = {
         staff_id: emp.id,
         name: emp.name,
         role: emp.role,
-        basic_salary: emp.salary,
+        basic_salary: emp.salary || 0,
         total_hours: totalHours,
         days_present: daysPresent,
         days_absent: daysAbsent,
@@ -488,7 +506,7 @@ export const db = {
   // Inventory Module
   // ----------------------------------------------------
   getInventory() {
-    return JSON.parse(localStorage.getItem('jb_inventory')) || [];
+    return safeGetLocalStorage('jb_inventory', []);
   },
 
   saveInventoryItem(item) {
@@ -523,7 +541,7 @@ export const db = {
   },
 
   getPurchases() {
-    const purchases = JSON.parse(localStorage.getItem('jb_purchases')) || [];
+    const purchases = safeGetLocalStorage('jb_purchases', []);
     const items = this.getInventory();
     return purchases.map(p => ({
       ...p,
@@ -532,23 +550,22 @@ export const db = {
   },
 
   savePurchase(purchase) {
-    // Record expense and update stock levels
     const purchases = this.getPurchases();
     const inventory = this.getInventory();
 
     purchase.id = 'pur-' + Date.now();
     purchase.date = purchase.date || getDateOffset(0);
-    purchase.quantity = Number(purchase.quantity);
-    purchase.total_cost = Number(purchase.total_cost);
+    purchase.quantity = Number(purchase.quantity || 0);
+    purchase.total_cost = Number(purchase.total_cost || 0);
 
     purchases.unshift(purchase);
 
-    // Update stock count
     const itemIndex = inventory.findIndex(i => i.id === purchase.item_id);
     if (itemIndex !== -1) {
       inventory[itemIndex].stock_on_hand += purchase.quantity;
-      // update average unit cost if needed
-      inventory[itemIndex].unit_cost = Number((purchase.total_cost / purchase.quantity).toFixed(2));
+      if (purchase.quantity > 0) {
+        inventory[itemIndex].unit_cost = Number((purchase.total_cost / purchase.quantity).toFixed(2));
+      }
       localStorage.setItem('jb_inventory', JSON.stringify(inventory));
     }
 
@@ -561,10 +578,10 @@ export const db = {
   // Complaints Module
   // ----------------------------------------------------
   getComplaints() {
-    const list = JSON.parse(localStorage.getItem('jb_complaints')) || [];
+    const list = safeGetLocalStorage('jb_complaints', []);
     const customers = this.getCustomers();
     const staff = this.getStaff();
-    const orders = JSON.parse(localStorage.getItem('jb_orders')) || [];
+    const orders = this.getOrders();
 
     return list.map(c => ({
       ...c,
@@ -575,7 +592,7 @@ export const db = {
   },
 
   saveComplaint(complaint) {
-    const list = JSON.parse(localStorage.getItem('jb_complaints')) || [];
+    const list = safeGetLocalStorage('jb_complaints', []);
     let isNew = false;
     
     if (complaint.id) {
@@ -594,7 +611,6 @@ export const db = {
     localStorage.setItem('jb_complaints', JSON.stringify(list));
     window.dispatchEvent(new Event('jb_database_updated'));
 
-    // Customer Notification Simulation
     if (isNew) {
       this.triggerCustomerNotification(complaint, 'Complaint Registered');
     } else if (complaint.status === 'Resolved') {
@@ -612,10 +628,8 @@ export const db = {
       ? `SMS/Email Alert: Dear ${customer.name}, your issue (Ref: ${complaint.id}) has been received and assigned to our team. We are on it!`
       : `SMS/Email Alert: Dear ${customer.name}, your issue (Ref: ${complaint.id}) has been marked as RESOLVED. Resolution notes: "${complaint.resolution_notes}". Thank you!`;
 
-    // Print to developer console and create local simulated browser alert
     console.log(`[Notification System] Sent to ${customer.email || 'SMS'}: ${message}`);
     
-    // Custom simulated notification trigger on browser window
     const customNotificationEvent = new CustomEvent('jb_simulated_notification', {
       detail: { message, date: new Date().toLocaleTimeString() }
     });
@@ -626,11 +640,10 @@ export const db = {
   // Approvals Module
   // ----------------------------------------------------
   getApprovals() {
-    return JSON.parse(localStorage.getItem('jb_approvals')) || [];
+    return safeGetLocalStorage('jb_approvals', []);
   },
 
   processApproval(id, decision) {
-    // decision = 'approved' | 'rejected'
     const approvals = this.getApprovals();
     const index = approvals.findIndex(a => a.id === id);
     if (index === -1) return null;
@@ -641,22 +654,19 @@ export const db = {
     app.approval_date = getDateOffset(0);
 
     if (decision === 'approved') {
-      // Execute the pending change
       if (app.entity_type === 'orders') {
-        const orders = JSON.parse(localStorage.getItem('jb_orders')) || [];
+        const orders = safeGetLocalStorage('jb_orders', []);
         const ordIndex = orders.findIndex(o => o.id === app.entity_id);
         if (ordIndex !== -1) {
           if (app.proposed_data) {
             orders[ordIndex] = { ...orders[ordIndex], ...app.proposed_data };
           } else {
-            // Delete operation
             orders.splice(ordIndex, 1);
           }
           localStorage.setItem('jb_orders', JSON.stringify(orders));
         }
       } else if (app.entity_type === 'customers') {
         if (!app.proposed_data) {
-          // Delete customer
           let customers = this.getCustomers();
           customers = customers.filter(c => c.id !== app.entity_id);
           localStorage.setItem('jb_customers', JSON.stringify(customers));

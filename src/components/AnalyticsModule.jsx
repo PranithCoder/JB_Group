@@ -124,7 +124,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
         <div className="kpi-card">
           <div className="kpi-info">
             <span className="kpi-label">Cash-In (Revenue)</span>
-            <span className="kpi-value">${cashIn.toFixed(2)}</span>
+            <span className="kpi-value">${Number(cashIn || 0).toFixed(2)}</span>
             <span className="kpi-badge up">Payments Recv</span>
           </div>
           <div className="kpi-icon-wrapper green">
@@ -135,7 +135,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
         <div className="kpi-card">
           <div className="kpi-info">
             <span className="kpi-label">Cash-Out (Expenses)</span>
-            <span className="kpi-value">${cashOut.toFixed(2)}</span>
+            <span className="kpi-value">${Number(cashOut || 0).toFixed(2)}</span>
             <span className="kpi-badge down">Materials purchase</span>
           </div>
           <div className="kpi-icon-wrapper red">

@@ -340,7 +340,7 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
                               <td>{o.delivery_date}</td>
                               <td>{o.service_type}</td>
                               <td style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={o.note}>{o.note}</td>
-                              <td style={{ fontWeight: 600 }}>${o.amount.toFixed(2)}</td>
+                              <td style={{ fontWeight: 600 }}>${Number(o.amount || 0).toFixed(2)}</td>
                               <td>
                                 <span className={`badge ${o.payment_status === 'paid' ? 'success' : 'danger'}`}>{o.payment_status}</span>
                               </td>

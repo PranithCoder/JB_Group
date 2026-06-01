@@ -53,9 +53,9 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   const filteredOrders = orders.filter(o => {
     // Search
     const matchesSearch = 
-      o.order_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.note.toLowerCase().includes(searchTerm.toLowerCase());
+      (o.order_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (o.customer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (o.note || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     // Status Filter
     if (!matchesSearch) return false;
@@ -311,7 +311,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ord.note}>
                         {ord.note || '—'}
                       </td>
-                      <td style={{ fontWeight: 600 }}>${ord.amount.toFixed(2)}</td>
+                      <td style={{ fontWeight: 600 }}>${Number(ord.amount || 0).toFixed(2)}</td>
                       <td>
                         <span className={`badge ${ord.payment_status === 'paid' ? 'success' : 'danger'}`}>
                           {ord.payment_status}

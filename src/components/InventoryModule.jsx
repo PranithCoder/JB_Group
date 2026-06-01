@@ -213,7 +213,7 @@ export default function InventoryModule({ activeRole, triggerUpdate }) {
                         {item.stock_on_hand} {item.unit}
                       </td>
                       <td>{item.reorder_threshold} {item.unit}</td>
-                      <td>${item.unit_cost.toFixed(2)}</td>
+                      <td>${Number(item.unit_cost || 0).toFixed(2)}</td>
                       <td>
                         <span className={`badge ${isLow ? 'danger' : 'success'}`}>
                           {isLow ? '⚠️ Low Stock' : 'Good Level'}
@@ -250,7 +250,7 @@ export default function InventoryModule({ activeRole, triggerUpdate }) {
                     {cat} Purchases
                   </span>
                   <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
-                    ${expenseByCategory[cat].toFixed(2)}
+                    ${Number(expenseByCategory[cat] || 0).toFixed(2)}
                   </span>
                 </div>
               ))}
@@ -282,7 +282,7 @@ export default function InventoryModule({ activeRole, triggerUpdate }) {
                         <td style={{ fontWeight: 600 }}>{p.item?.name || 'Deleted Item'}</td>
                         <td><span className="badge info">{p.item?.category || 'General'}</span></td>
                         <td>{p.quantity} {p.item?.unit || ''}</td>
-                        <td style={{ fontWeight: 600, color: 'var(--color-danger)' }}>-${p.total_cost.toFixed(2)}</td>
+                        <td style={{ fontWeight: 600, color: 'var(--color-danger)' }}>-${Number(p.total_cost || 0).toFixed(2)}</td>
                         <td>
                           {p.receipt_url ? (
                             <a href={p.receipt_url} target="_blank" rel="noreferrer" className="badge success" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>

@@ -230,7 +230,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                       <span className="badge info">{emp.role}</span>
                     </td>
                     <td>{emp.join_date}</td>
-                    <td style={{ fontWeight: 600 }}>${emp.salary.toFixed(2)}</td>
+                    <td style={{ fontWeight: 600 }}>${Number(emp.salary || 0).toFixed(2)}</td>
                     <td>{emp.leaves?.sick || 0} left</td>
                     <td>{emp.leaves?.casual || 0} left</td>
                     <td>{emp.leaves?.vacation || 0} left</td>
@@ -382,7 +382,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                         <div>{sheet.name}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sheet.role}</div>
                       </td>
-                      <td>${sheet.basic_salary.toFixed(2)}</td>
+                      <td>${Number(sheet.basic_salary || 0).toFixed(2)}</td>
                       <td>{sheet.total_hours} hrs</td>
                       <td>
                         <span className={sheet.overtime_hours > 0 ? 'text-green' : ''} style={{ fontWeight: sheet.overtime_hours > 0 ? '600' : 'normal' }}>
@@ -392,8 +392,8 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                       <td>
                         <span className="text-green">{sheet.days_present} present</span> / <span className="text-red">{sheet.days_absent} absent</span>
                       </td>
-                      <td className={sheet.deductions > 0 ? 'text-red' : ''}>-${sheet.deductions.toFixed(2)}</td>
-                      <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>${sheet.net_pay.toFixed(2)}</td>
+                      <td className={sheet.deductions > 0 ? 'text-red' : ''}>-${Number(sheet.deductions || 0).toFixed(2)}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>${Number(sheet.net_pay || 0).toFixed(2)}</td>
                       <td>
                         <button className="btn btn-secondary btn-sm" onClick={() => setViewingPayslip(sheet)}>
                           <FileText size={14} /> View Slip
@@ -513,7 +513,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Basic Month Salary:</span>
-                  <span style={{ fontWeight: 600 }}>${viewingPayslip.basic_salary.toFixed(2)}</span>
+                  <span style={{ fontWeight: 600 }}>${Number(viewingPayslip.basic_salary || 0).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -524,17 +524,17 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Overtime Premium:</span>
-                  <span className="text-green">+{(viewingPayslip.overtime_hours * (viewingPayslip.basic_salary / 240) * 1.5).toFixed(2)} ({viewingPayslip.overtime_hours}h)</span>
+                  <span className="text-green">+{(Number(viewingPayslip.overtime_hours * (viewingPayslip.basic_salary / 240) * 1.5 || 0)).toFixed(2)} ({viewingPayslip.overtime_hours}h)</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Leave Deductions:</span>
-                  <span className="text-red">-${viewingPayslip.deductions.toFixed(2)}</span>
+                  <span className="text-red">-${Number(viewingPayslip.deductions || 0).toFixed(2)}</span>
                 </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                 <span>Net Salary Payable:</span>
-                <span>${viewingPayslip.net_pay.toFixed(2)}</span>
+                <span>${Number(viewingPayslip.net_pay || 0).toFixed(2)}</span>
               </div>
 
               <div style={{ marginTop: '2rem', fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center' }}>
