@@ -11,6 +11,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   const [viewingAudit, setViewingAudit] = useState(null);
   const [showFormModal, setShowFormModal] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [custSearch, setCustSearch] = useState('');
+  const [showCustDropdown, setShowCustDropdown] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -66,8 +68,9 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   });
 
   const openAddModal = () => {
+    const firstCust = customers[0];
     setFormData({
-      customer_id: customers[0]?.id || '',
+      customer_id: firstCust?.id || '',
       delivery_date: new Date('2026-06-03').toISOString().split('T')[0], // Default 2 days out
       service_type: 'Stitching',
       note: '',
@@ -75,11 +78,13 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       amount: '',
       payment_status: 'unpaid'
     });
+    setCustSearch(firstCust ? `${firstCust.name} (${firstCust.contact})` : '');
     setEditingOrder(null);
     setShowFormModal(true);
   };
 
   const openEditModal = (order) => {
+    const matchingCust = customers.find(c => c.id === order.customer_id);
     setFormData({
       customer_id: order.customer_id,
       delivery_date: order.delivery_date,
@@ -89,13 +94,18 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       amount: order.amount,
       payment_status: order.payment_status
     });
+    setCustSearch(matchingCust ? `${matchingCust.name} (${matchingCust.contact})` : '');
     setEditingOrder(order);
     setShowFormModal(true);
   };
 
   const handleSave = (e) => {
     e.preventDefault();
-    if (!formData.customer_id || !formData.delivery_date || !formData.amount) {
+    if (!formData.customer_id) {
+      alert('Please search and select a valid customer from the dropdown list.');
+      return;
+    }
+    if (!formData.delivery_date || !formData.amount) {
       alert('Required fields are missing.');
       return;
     }
@@ -150,6 +160,27 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     refreshList();
     triggerUpdate();
     setTimeout(() => setNotification(null), 4000);
+  };
+
+  const handleQuickStatusChange = (orderId, newStatus) => {
+    const original = orders.find(o => o.id === orderId);
+    if (!original) return;
+
+    const payload = {
+      ...original,
+      status: newStatus
+    };
+
+    const result = db.saveOrder(payload);
+    if (result.status === 'success') {
+      setNotification({
+        type: 'success',
+        message: `Order ${original.order_no} status updated to ${newStatus}.`
+      });
+      refreshList();
+      triggerUpdate();
+      setTimeout(() => setNotification(null), 4000);
+    }
   };
 
   const viewAuditLog = (order) => {
@@ -318,12 +349,39 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                         </span>
                       </td>
                       <td>
-                        <span className={`badge ${
-                          ord.status === 'completed' ? 'success' : 
-                          ord.status === 'in-progress' ? 'warning' : 'info'
-                        }`}>
-                          {ord.status}
-                        </span>
+                        {isReadOnly ? (
+                          <span className={`badge ${
+                            ord.status === 'completed' ? 'success' : 
+                            ord.status === 'in-progress' ? 'warning' : 'info'
+                          }`}>
+                            {ord.status}
+                          </span>
+                        ) : (
+                          <select
+                            value={ord.status}
+                            onChange={(e) => handleQuickStatusChange(ord.id, e.target.value)}
+                            className="form-select"
+                            style={{
+                              padding: '0.125rem 0.5rem',
+                              fontSize: '0.75rem',
+                              width: 'auto',
+                              borderRadius: '4px',
+                              fontWeight: 600,
+                              backgroundColor: 
+                                ord.status === 'completed' ? 'var(--color-success-light)' : 
+                                ord.status === 'in-progress' ? 'var(--color-warning-light)' : 'var(--color-primary-light)',
+                              color: 
+                                ord.status === 'completed' ? 'var(--color-success)' : 
+                                ord.status === 'in-progress' ? '#b45309' : 'var(--color-primary)',
+                              border: 'none',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="in-progress">In-Progress</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                        )}
                       </td>
                       <td>
                         <div className="filter-actions">
@@ -364,18 +422,53 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
             <form onSubmit={handleSave}>
               <div className="modal-body">
                 <div className="form-grid">
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <div className="form-group" style={{ gridColumn: 'span 2', position: 'relative' }}>
                     <label className="form-label">Client Name *</label>
-                    <select 
-                      className="form-select"
-                      required
-                      value={formData.customer_id}
-                      onChange={e => setFormData({ ...formData, customer_id: e.target.value })}
-                    >
-                      {customers.map(c => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.contact})</option>
-                      ))}
-                    </select>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="Type name or contact number to search..." 
+                      value={custSearch}
+                      onChange={e => {
+                        setCustSearch(e.target.value);
+                        setShowCustDropdown(true);
+                        setFormData(prev => ({ ...prev, customer_id: '' }));
+                      }}
+                      onFocus={() => setShowCustDropdown(true)}
+                      onBlur={() => {
+                        setTimeout(() => setShowCustDropdown(false), 250);
+                      }}
+                    />
+                    {showCustDropdown && (
+                      <div className="dropdown-menu-custom">
+                        {customers.filter(c => 
+                          (c.name || '').toLowerCase().includes(custSearch.toLowerCase()) ||
+                          (c.contact || '').includes(custSearch)
+                        ).length === 0 ? (
+                          <div className="dropdown-item-custom empty">No customers found</div>
+                        ) : (
+                          customers.filter(c => 
+                            (c.name || '').toLowerCase().includes(custSearch.toLowerCase()) ||
+                            (c.contact || '').includes(custSearch)
+                          ).map(c => (
+                            <div 
+                              key={c.id} 
+                              className={`dropdown-item-custom ${formData.customer_id === c.id ? 'selected' : ''}`}
+                              onClick={() => {
+                                setFormData(prev => ({ ...prev, customer_id: c.id }));
+                                setCustSearch(`${c.name} (${c.contact})`);
+                                setShowCustDropdown(false);
+                              }}
+                            >
+                              <div>
+                                <strong>{c.name}</strong>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.contact}</div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Service Category</label>
@@ -422,18 +515,20 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       <option value="paid">Paid</option>
                     </select>
                   </div>
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label">Current Progress Status</label>
-                    <select 
-                      className="form-select"
-                      value={formData.status}
-                      onChange={e => setFormData({ ...formData, status: e.target.value })}
-                    >
-                      <option value="pending">Pending (Design)</option>
-                      <option value="in-progress">In-Progress (Stitching/Cutting)</option>
-                      <option value="completed">Completed & Verified</option>
-                    </select>
-                  </div>
+                  {editingOrder && (
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Current Progress Status</label>
+                      <select 
+                        className="form-select"
+                        value={formData.status}
+                        onChange={e => setFormData({ ...formData, status: e.target.value })}
+                      >
+                        <option value="pending">Pending (Design)</option>
+                        <option value="in-progress">In-Progress (Stitching/Cutting)</option>
+                        <option value="completed">Completed & Verified</option>
+                      </select>
+                    </div>
+                  )}
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <label className="form-label">Detailed Notes / Fabric Preferences</label>
                     <textarea 
