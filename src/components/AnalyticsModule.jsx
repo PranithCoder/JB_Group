@@ -105,6 +105,203 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
     { name: 'May 25', complaints: openComplaintsCount }
   ];
 
+  // Render simplified dashboard for Admin Officer
+  if (activeRole === 'officer') {
+    const pendingBookings = orders.filter(o => o.status === 'pending').length;
+    const inProgressBookings = orders.filter(o => o.status === 'in-progress').length;
+    const completedBookings = orders.filter(o => o.status === 'completed').length;
+    const totalClientsCount = customers.length;
+
+    const activeOrdersList = orders
+      .filter(o => o.status !== 'completed')
+      .sort((a, b) => new Date(a.delivery_date) - new Date(b.delivery_date))
+      .slice(0, 5);
+
+    const recentCustomersList = [...customers].slice(0, 4);
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+        
+        {/* Simplified Roster KPI Cards */}
+        <div className="kpi-grid">
+          <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('orders')}>
+            <div className="kpi-info">
+              <span className="kpi-label">Pending Bookings</span>
+              <span className="kpi-value">{pendingBookings}</span>
+              <span className="kpi-badge warning">Pending Stitching</span>
+            </div>
+            <div className="kpi-icon-wrapper yellow">
+              <ShoppingBag size={24} />
+            </div>
+          </div>
+
+          <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('orders')}>
+            <div className="kpi-info">
+              <span className="kpi-label">In-Progress Orders</span>
+              <span className="kpi-value">{inProgressBookings}</span>
+              <span className="kpi-badge info">At Tailor Station</span>
+            </div>
+            <div className="kpi-icon-wrapper blue">
+              <ShoppingBag size={24} />
+            </div>
+          </div>
+
+          <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('orders')}>
+            <div className="kpi-info">
+              <span className="kpi-label">Completed Orders</span>
+              <span className="kpi-value">{completedBookings}</span>
+              <span className="kpi-badge success">Ready for Delivery</span>
+            </div>
+            <div className="kpi-icon-wrapper green">
+              <ShoppingBag size={24} />
+            </div>
+          </div>
+
+          <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('customers')}>
+            <div className="kpi-info">
+              <span className="kpi-label">Total Customers</span>
+              <span className="kpi-value">{totalClientsCount}</span>
+              <span className="kpi-badge success">Enrolled Profiles</span>
+            </div>
+            <div className="kpi-icon-wrapper blue">
+              <Users size={24} />
+            </div>
+          </div>
+        </div>
+
+        {/* Deliveries Schedule & Recent Customers */}
+        <div className="dashboard-grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
+          
+          {/* Due Deliveries Queue */}
+          <div className="card">
+            <div className="card-header">
+              <h3>
+                <CalendarClock size={18} style={{ color: 'var(--color-primary)' }} />
+                Due Soon Deliveries Schedule
+              </h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setCurrentSection('orders')}>View Order Book</button>
+            </div>
+            <div className="card-body" style={{ padding: 0 }}>
+              <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Order No</th>
+                      <th>Customer Name</th>
+                      <th>Delivery Date</th>
+                      <th>Service Type</th>
+                      <th>Work Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeOrdersList.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                          No pending delivery schedules logged!
+                        </td>
+                      </tr>
+                    ) : (
+                      activeOrdersList.map(o => {
+                        const daysRemaining = (dueDateStr) => {
+                          const today = new Date('2026-06-01');
+                          const dueDate = new Date(dueDateStr);
+                          return Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+                        };
+                        const daysLeft = daysRemaining(o.delivery_date);
+                        let dateClass = '';
+                        let dateText = o.delivery_date;
+                        if (daysLeft < 0) {
+                          dateClass = 'text-red';
+                          dateText = `${o.delivery_date} (Overdue ${Math.abs(daysLeft)}d)`;
+                        } else if (daysLeft === 0) {
+                          dateClass = 'text-amber';
+                          dateText = `${o.delivery_date} (TODAY)`;
+                        } else if (daysLeft <= 2) {
+                          dateClass = 'text-amber';
+                          dateText = `${o.delivery_date} (${daysLeft}d left)`;
+                        }
+
+                        return (
+                          <tr key={o.id}>
+                            <td style={{ fontWeight: 600 }}>{o.order_no}</td>
+                            <td>{o.customer?.name || '—'}</td>
+                            <td className={dateClass} style={{ fontWeight: dateClass ? 600 : 'normal' }}>{dateText}</td>
+                            <td>{o.service_type}</td>
+                            <td>
+                              <select
+                                value={o.status}
+                                onChange={(e) => {
+                                  const payload = { ...o, status: e.target.value };
+                                  db.saveOrder(payload);
+                                }}
+                                className="form-select"
+                                style={{
+                                  padding: '0.125rem 0.5rem',
+                                  fontSize: '0.75rem',
+                                  width: 'auto',
+                                  borderRadius: '4px',
+                                  fontWeight: 600,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  backgroundColor: 
+                                    o.status === 'completed' ? 'var(--color-success-light)' : 
+                                    o.status === 'in-progress' ? 'var(--color-warning-light)' : 'var(--color-primary-light)',
+                                  color: 
+                                    o.status === 'completed' ? 'var(--color-success)' : 
+                                    o.status === 'in-progress' ? '#b45309' : 'var(--color-primary)'
+                                }}
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="in-progress">In-Progress</option>
+                                <option value="completed">Completed</option>
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Enrolled Customers */}
+          <div className="card">
+            <div className="card-header">
+              <h3>Recent Customers</h3>
+            </div>
+            <div className="card-body" style={{ padding: '1.25rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {recentCustomersList.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: '#fafafa' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.825rem' }}>{c.name}</div>
+                      <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>{c.contact}</div>
+                    </div>
+                    <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }} onClick={() => setCurrentSection('customers')}>
+                      History
+                    </button>
+                  </div>
+                ))}
+                <button 
+                  className="btn btn-primary btn-sm mt-md" 
+                  style={{ justifyContent: 'center', fontWeight: 600 }}
+                  onClick={() => setCurrentSection('customers')}
+                >
+                  Enroll Customer Profile
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    );
+  }
+
+  // Render Business Insights Dashboard for Managers/Owners
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
       
@@ -199,7 +396,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
           <div className="card-header">
             <h3>Sales Over Time (Order Bookings value)</h3>
           </div>
-          <div className="card-body" style={{ height: '300px' }}>
+          <div className="card-body" style={{ height: '300px', width: '100%', position: 'relative', display: 'block' }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={salesChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -217,7 +414,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
           <div className="card-header">
             <h3>Active Complaints Trend</h3>
           </div>
-          <div className="card-body" style={{ height: '300px' }}>
+          <div className="card-body" style={{ height: '300px', width: '100%', position: 'relative', display: 'block' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={complaintsData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -237,7 +434,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
           <div className="card-header">
             <h3>Cash Flow Balance (Cash-In vs Cash-Out)</h3>
           </div>
-          <div className="card-body" style={{ height: '300px' }}>
+          <div className="card-body" style={{ height: '300px', width: '100%', position: 'relative', display: 'block' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={cashflowData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -257,7 +454,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
           <div className="card-header">
             <h3>Inventory Level vs. Reorder Threshold</h3>
           </div>
-          <div className="card-body" style={{ height: '300px' }}>
+          <div className="card-body" style={{ height: '300px', width: '100%', position: 'relative', display: 'block' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={inventoryChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
