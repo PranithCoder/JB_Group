@@ -397,7 +397,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
             <h3>Sales Over Time (Order Bookings value)</h3>
           </div>
           <div className="card-body" style={{ height: '300px', width: '100%', position: 'relative', display: 'block' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="99%" height={260}>
               <LineChart data={salesChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickLine={false} />
@@ -415,7 +415,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
             <h3>Active Complaints Trend</h3>
           </div>
           <div className="card-body" style={{ height: '300px', width: '100%', position: 'relative', display: 'block' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="99%" height={260}>
               <AreaChart data={complaintsData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} />
@@ -435,7 +435,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
             <h3>Cash Flow Balance (Cash-In vs Cash-Out)</h3>
           </div>
           <div className="card-body" style={{ height: '300px', width: '100%', position: 'relative', display: 'block' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="99%" height={260}>
               <BarChart data={cashflowData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
@@ -455,7 +455,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
             <h3>Inventory Level vs. Reorder Threshold</h3>
           </div>
           <div className="card-body" style={{ height: '300px', width: '100%', position: 'relative', display: 'block' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="99%" height={260}>
               <BarChart data={inventoryChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={9} tickLine={false} interval={0} angle={-15} textAnchor="end" height={50} />
