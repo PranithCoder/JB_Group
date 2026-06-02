@@ -8,7 +8,8 @@ import {
   AlertTriangle, 
   UsersRound, 
   ShieldCheck, 
-  Scissors
+  Scissors,
+  ShoppingCart
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -38,9 +39,15 @@ export default function Sidebar({
       id: 'orders', 
       label: 'Orders', 
       icon: ShoppingBag, 
-      roles: ['officer', 'manager', 'boss', 'super_admin'],
-      // Badge count can reflect something if wanted, e.g. active orders
+      roles: ['officer', 'manager', 'boss', 'super_admin']
     },
+    { 
+      id: 'retail', 
+      label: 'Retail & Accessories', 
+      icon: ShoppingCart, 
+      roles: ['officer', 'manager', 'boss', 'super_admin']
+    },
+
     { 
       id: 'staff', 
       label: 'Staff & Attendance', 

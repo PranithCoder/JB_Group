@@ -38,6 +38,8 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
   const inventory = db.getInventory();
   const purchases = db.getPurchases();
   const attendance = db.getAttendance();
+  const retailSales = db.getRetailSales();
+
 
   // Helper to determine if a date is within a timeframe
   const isWithinTimeframe = (dateStr, timeframe) => {
@@ -63,7 +65,8 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
   // 1. KPI Aggregations
   const totalSales = orders
     .filter(o => o.status === 'completed' || o.payment_status === 'paid' || o.payment_status === 'partially_paid')
-    .reduce((sum, o) => sum + o.amount, 0);
+    .reduce((sum, o) => sum + o.amount, 0) +
+    retailSales.reduce((sum, s) => sum + s.total_price, 0);
 
   const cashIn = orders
     .filter(o => isWithinTimeframe(o.order_date, cashflowTimeframe))
@@ -71,7 +74,14 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
       if (o.payment_status === 'paid') return sum + o.amount;
       if (o.payment_status === 'partially_paid') return sum + (o.amount_paid || 0);
       return sum;
-    }, 0);
+    }, 0) +
+    retailSales
+      .filter(s => isWithinTimeframe(s.sale_date, cashflowTimeframe))
+      .reduce((sum, s) => {
+        if (s.payment_status === 'paid') return sum + s.total_price;
+        return sum;
+      }, 0);
+
 
   const cashOut = purchases
     .filter(p => isWithinTimeframe(p.date, cashflowTimeframe))
@@ -138,6 +148,15 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
           else if (o.payment_status === 'partially_paid') cashInVal += (o.amount_paid || 0);
         }
       });
+
+      retailSales.forEach(s => {
+        const sDate = new Date(s.sale_date);
+        const diffDays = Math.round((refDate - sDate) / (1000 * 60 * 60 * 24));
+        if (diffDays >= w.start && diffDays <= w.end) {
+          if (s.payment_status === 'paid') cashInVal += s.total_price;
+        }
+      });
+
 
       purchases.forEach(p => {
         const pDate = new Date(p.date);

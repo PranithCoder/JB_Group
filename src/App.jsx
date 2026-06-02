@@ -10,7 +10,9 @@ import InventoryModule from './components/InventoryModule';
 import ComplaintModule from './components/ComplaintModule';
 import ApprovalQueue from './components/ApprovalQueue';
 import AuditLogs from './components/AuditLogs';
+import RetailModule from './components/RetailModule';
 import { AlertCircle, ShieldAlert, Sparkles, X, BellRing } from 'lucide-react';
+
 
 function App() {
   const [activeRole, setActiveRole] = useState(db.getActiveRole());
@@ -109,6 +111,15 @@ function App() {
             key={`orders-${activeRole}`} 
           />
         );
+      case 'retail':
+        return (
+          <RetailModule 
+            activeRole={activeRole} 
+            triggerUpdate={triggerUpdate} 
+            key={`retail-${activeRole}`} 
+          />
+        );
+
       case 'staff':
         return (
           <StaffModule 

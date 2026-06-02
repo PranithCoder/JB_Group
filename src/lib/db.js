@@ -165,6 +165,19 @@ const DEFAULT_APPROVALS = [
   }
 ];
 
+const DEFAULT_RETAIL_INVENTORY = [
+  { id: 'ri-1', name: 'Ready-made Cotton Frock', category: 'Ready-made Dresses', stock_on_hand: 12, reorder_threshold: 4, unit_cost: 1500.00, retail_price: 2800.00 },
+  { id: 'ri-2', name: 'Designer Silk Saree', category: 'Ready-made Dresses', stock_on_hand: 6, reorder_threshold: 2, unit_cost: 4000.00, retail_price: 7500.00 },
+  { id: 'ri-3', name: 'Handmade Beaded Hairpin set', category: 'Women Accessories', stock_on_hand: 35, reorder_threshold: 10, unit_cost: 120.00, retail_price: 250.00 },
+  { id: 'ri-4', name: 'Premium Brocade Handbag', category: 'Women Accessories', stock_on_hand: 8, reorder_threshold: 3, unit_cost: 750.00, retail_price: 1650.00 }
+];
+
+const DEFAULT_RETAIL_SALES = [
+  { id: 'rs-101', customer_id: 'c-1', product_id: 'ri-1', qty: 1, unit_price: 2800.00, total_price: 2800.00, sale_date: getDateOffset(-2), payment_status: 'paid' },
+  { id: 'rs-102', customer_id: 'c-2', product_id: 'ri-4', qty: 2, unit_price: 1650.00, total_price: 3300.00, sale_date: getDateOffset(-1), payment_status: 'paid' }
+];
+
+
 // Helper function to safely read from local storage without crashing
 const safeGetLocalStorage = (key, defaultVal) => {
   try {
@@ -207,6 +220,9 @@ const initLocalStorage = () => {
   checkAndSeed('jb_purchases', DEFAULT_PURCHASES);
   checkAndSeed('jb_complaints', DEFAULT_COMPLAINTS);
   checkAndSeed('jb_approvals', DEFAULT_APPROVALS);
+  checkAndSeed('jb_retail_inventory', DEFAULT_RETAIL_INVENTORY);
+  checkAndSeed('jb_retail_sales', DEFAULT_RETAIL_SALES);
+
 
   if (!localStorage.getItem('jb_active_role')) {
     localStorage.setItem('jb_active_role', 'manager');
@@ -225,7 +241,9 @@ const syncToFirestore = async (fsKey, item) => {
     if (cleanItem.assignedStaff) delete cleanItem.assignedStaff;
     if (cleanItem.item) delete cleanItem.item;
     if (cleanItem.order) delete cleanItem.order;
+    if (cleanItem.product) delete cleanItem.product;
     await setDoc(doc(firestore, fsKey, item.id), cleanItem);
+
   } catch (err) {
     console.error(`Error syncing to Firestore (${fsKey}/${item.id}):`, err);
   }
@@ -248,7 +266,10 @@ const collectionsToSync = [
   { fsKey: 'inventory', lsKey: 'jb_inventory' },
   { fsKey: 'purchases', lsKey: 'jb_purchases' },
   { fsKey: 'complaints', lsKey: 'jb_complaints' },
-  { fsKey: 'approvals', lsKey: 'jb_approvals' }
+  { fsKey: 'approvals', lsKey: 'jb_approvals' },
+  { fsKey: 'retail_inventory', lsKey: 'jb_retail_inventory' },
+  { fsKey: 'retail_sales', lsKey: 'jb_retail_sales' }
+
 ];
 
 collectionsToSync.forEach(({ fsKey, lsKey }) => {
@@ -266,7 +287,9 @@ collectionsToSync.forEach(({ fsKey, lsKey }) => {
               if (cleanItem.assignedStaff) delete cleanItem.assignedStaff;
               if (cleanItem.item) delete cleanItem.item;
               if (cleanItem.order) delete cleanItem.order;
+              if (cleanItem.product) delete cleanItem.product;
               await setDoc(doc(firestore, fsKey, item.id), cleanItem);
+
             } catch (err) {
               console.error(`Seeding error for ${fsKey}/${item.id}:`, err);
             }
@@ -871,6 +894,8 @@ export const db = {
       zip.file('purchases.json', JSON.stringify(this.getPurchases(), null, 2));
       zip.file('complaints.json', JSON.stringify(this.getComplaints(), null, 2));
       zip.file('approvals.json', JSON.stringify(this.getApprovals(), null, 2));
+      zip.file('retail_inventory.json', JSON.stringify(this.getRetailInventory(), null, 2));
+      zip.file('retail_sales.json', JSON.stringify(this.getRetailSales(), null, 2));
 
       // Generate the ZIP file async
       const content = await zip.generateAsync({ type: 'blob' });
@@ -888,6 +913,87 @@ export const db = {
       console.error('Error generating backup zip:', err);
       alert('Failed to generate database backup. See console for details.');
     }
+  },
+
+  // ----------------------------------------------------
+  // Retail & Accessories Module
+  // ----------------------------------------------------
+  getRetailInventory() {
+    return safeGetLocalStorage('jb_retail_inventory', []);
+  },
+
+  saveRetailProduct(product) {
+    const list = this.getRetailInventory();
+    let savedProduct;
+    if (product.id) {
+      const index = list.findIndex(p => p.id === product.id);
+      if (index !== -1) {
+        list[index] = { ...list[index], ...product };
+        savedProduct = list[index];
+      }
+    } else {
+      product.id = 'ri-' + Date.now();
+      product.stock_on_hand = Number(product.stock_on_hand || 0);
+      product.unit_cost = Number(product.unit_cost || 0);
+      product.retail_price = Number(product.retail_price || 0);
+      list.unshift(product);
+      savedProduct = product;
+    }
+    localStorage.setItem('jb_retail_inventory', JSON.stringify(list));
+    if (savedProduct) syncToFirestore('retail_inventory', savedProduct);
+    window.dispatchEvent(new Event('jb_database_updated'));
+    return savedProduct || product;
+  },
+
+  deleteRetailProduct(id) {
+    const role = this.getActiveRole();
+    if (role !== 'super_admin' && role !== 'manager') {
+      return { status: 'error', message: 'Deleting retail products requires Manager or Owner role!' };
+    }
+    let list = this.getRetailInventory();
+    list = list.filter(p => p.id !== id);
+    localStorage.setItem('jb_retail_inventory', JSON.stringify(list));
+    deleteFromFirestore('retail_inventory', id);
+    window.dispatchEvent(new Event('jb_database_updated'));
+    return { status: 'success' };
+  },
+
+  getRetailSales() {
+    const sales = safeGetLocalStorage('jb_retail_sales', []);
+    const inventory = this.getRetailInventory();
+    const customers = this.getCustomers();
+    return sales.map(s => ({
+      ...s,
+      product: inventory.find(i => i.id === s.product_id) || { name: 'Deleted Product', category: 'General' },
+      customer: customers.find(c => c.id === s.customer_id) || { name: 'Unknown Customer' }
+    }));
+  },
+
+  saveRetailSale(sale) {
+    const salesList = safeGetLocalStorage('jb_retail_sales', []);
+    const inventoryList = this.getRetailInventory();
+
+    sale.id = 'rs-' + Date.now();
+    sale.sale_date = sale.sale_date || getDateOffset(0);
+    sale.qty = Number(sale.qty || 1);
+    sale.unit_price = Number(sale.unit_price || 0);
+    sale.total_price = Number((sale.qty * sale.unit_price).toFixed(2));
+    sale.payment_status = sale.payment_status || 'paid';
+
+    // Decrement inventory stock
+    const pIndex = inventoryList.findIndex(i => i.id === sale.product_id);
+    if (pIndex !== -1) {
+      inventoryList[pIndex].stock_on_hand = Math.max(0, inventoryList[pIndex].stock_on_hand - sale.qty);
+      localStorage.setItem('jb_retail_inventory', JSON.stringify(inventoryList));
+      syncToFirestore('retail_inventory', inventoryList[pIndex]);
+    }
+
+    salesList.unshift(sale);
+    localStorage.setItem('jb_retail_sales', JSON.stringify(salesList));
+    syncToFirestore('retail_sales', sale);
+    window.dispatchEvent(new Event('jb_database_updated'));
+    return sale;
   }
 };
+
 
