@@ -213,9 +213,9 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                   <th>Designation / Role</th>
                   <th>Join Date</th>
                   <th>Monthly Salary</th>
-                  <th>Sick Leaves (Bal)</th>
-                  <th>Casual Leaves (Bal)</th>
-                  <th>Vacation Leaves (Bal)</th>
+                  <th>Sick Leaves Taken</th>
+                  <th>Casual Leaves Taken</th>
+                  <th>Vacation Leaves Taken</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -231,9 +231,9 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                     </td>
                     <td>{emp.join_date}</td>
                     <td style={{ fontWeight: 600 }}>Rs. {Number(emp.salary || 0).toFixed(2)}</td>
-                    <td>{emp.leaves?.sick || 0} left</td>
-                    <td>{emp.leaves?.casual || 0} left</td>
-                    <td>{emp.leaves?.vacation || 0} left</td>
+                    <td>{attendance.filter(a => a.staff_id === emp.id && a.status === 'Absent' && a.leave_type === 'sick').length} days</td>
+                    <td>{attendance.filter(a => a.staff_id === emp.id && a.status === 'Absent' && a.leave_type === 'casual').length} days</td>
+                    <td>{attendance.filter(a => a.staff_id === emp.id && a.status === 'Absent' && a.leave_type === 'vacation').length} days</td>
                     <td>
                       {!isReadOnly ? (
                         <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openEditEmployee(emp)}>
