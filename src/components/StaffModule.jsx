@@ -158,6 +158,53 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
     triggerUpdate();
   };
 
+  const getTailorStats = () => {
+    const ordersList = db.getOrders();
+    const staffList = db.getStaff();
+    const refDate = new Date('2026-06-01');
+
+    return staffList.map(s => {
+      // Filter orders assigned to this staff member and completed
+      const staffOrders = ordersList.filter(o => o.assigned_staff_id === s.id && o.status === 'completed');
+
+      let dailyCount = 0;
+      let weeklyCount = 0;
+      let monthlyCount = 0;
+
+      staffOrders.forEach(o => {
+        const compDateStr = o.completed_date || o.delivery_date;
+        if (!compDateStr) return;
+        
+        const compDate = new Date(compDateStr);
+        const diffTime = refDate - compDate;
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+        // Daily (completed today, June 1, 2026)
+        if (compDateStr === '2026-06-01') {
+          dailyCount++;
+        }
+        // Weekly (completed in last 7 days)
+        if (diffDays >= 0 && diffDays <= 7) {
+          weeklyCount++;
+        }
+        // Monthly (completed in last 30 days)
+        if (diffDays >= 0 && diffDays <= 30) {
+          monthlyCount++;
+        }
+      });
+
+      return {
+        id: s.id,
+        name: s.name,
+        role: s.role,
+        daily: dailyCount,
+        weekly: weeklyCount,
+        monthly: monthlyCount,
+        total: staffOrders.length
+      };
+    });
+  };
+
   const calculatedPayroll = db.generateMonthlyPayroll(selectedMonth);
   const isReadOnly = activeRole === 'boss';
 
@@ -196,6 +243,12 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
               onClick={() => setActiveTab('payroll')}
             >
               Month-End Payroll Sheets
+            </button>
+            <button 
+              className={`role-btn ${activeTab === 'performance' ? 'active' : ''}`}
+              onClick={() => setActiveTab('performance')}
+            >
+              Tailor Performance Stats
             </button>
           </div>
           <button className="btn btn-secondary btn-sm" onClick={refreshData}>
@@ -401,6 +454,100 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 4: Tailor Performance Stats */}
+        {activeTab === 'performance' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h4 style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem' }}>Tailor Workload & Completed Orders</h4>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Tracking completed stitching and alterations orders per tailor across different periods (Daily, Weekly, Monthly).
+                </p>
+              </div>
+              <div style={{ fontSize: '0.8rem', backgroundColor: '#f1f5f9', padding: '0.35rem 0.75rem', borderRadius: '6px', fontWeight: 600 }}>
+                Reference Date: 2026-06-01
+              </div>
+            </div>
+
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Tailor Details</th>
+                    <th>Role / Designation</th>
+                    <th style={{ textAlign: 'center' }}>Daily Finished</th>
+                    <th style={{ textAlign: 'center' }}>Weekly Finished</th>
+                    <th style={{ textAlign: 'center' }}>Monthly Finished</th>
+                    <th style={{ textAlign: 'center' }}>Total Completed</th>
+                    <th>Weekly Efficiency Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getTailorStats().map(tailor => {
+                    const weeklyTarget = 5;
+                    const pct = Math.min(100, Math.round((tailor.weekly / weeklyTarget) * 100));
+                    
+                    // Determine rating label
+                    let rating = 'Standard';
+                    let ratingColor = 'var(--text-muted)';
+                    if (tailor.weekly >= 5) {
+                      rating = 'Highly Productive';
+                      ratingColor = 'var(--color-success)';
+                    } else if (tailor.weekly >= 3) {
+                      rating = 'Good';
+                      ratingColor = 'var(--color-primary)';
+                    } else if (tailor.total === 0) {
+                      rating = 'Inactive';
+                      ratingColor = '#cbd5e1';
+                    }
+
+                    return (
+                      <tr key={tailor.id}>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{tailor.name}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {tailor.id}</div>
+                        </td>
+                        <td>
+                          <span className="badge info">{tailor.role}</span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className={`badge ${tailor.daily > 0 ? 'success' : 'secondary'}`} style={{ minWidth: '36px', display: 'inline-block' }}>
+                            {tailor.daily}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className={`badge ${tailor.weekly > 2 ? 'success' : tailor.weekly > 0 ? 'warning' : 'secondary'}`} style={{ minWidth: '36px', display: 'inline-block' }}>
+                            {tailor.weekly}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className={`badge ${tailor.monthly > 8 ? 'success' : tailor.monthly > 0 ? 'info' : 'secondary'}`} style={{ minWidth: '36px', display: 'inline-block' }}>
+                            {tailor.monthly}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                          {tailor.total} orders
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '150px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.725rem' }}>
+                              <span style={{ color: ratingColor === 'var(--text-muted)' ? 'inherit' : ratingColor, fontWeight: 600 }}>{rating}</span>
+                              <span style={{ color: 'var(--text-muted)' }}>{pct}% of target</span>
+                            </div>
+                            <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', backgroundColor: ratingColor === 'var(--text-muted)' ? 'var(--color-warning)' : ratingColor, borderRadius: '3px' }}></div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

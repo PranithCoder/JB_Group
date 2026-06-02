@@ -71,20 +71,22 @@ export default function Header({ activeRole, onRoleChange, currentSection }) {
           </button>
         </div>
 
-        {/* Reset Database Button */}
-        <button 
-          className="btn btn-secondary btn-sm"
-          onClick={() => {
-            if (confirm('Reset simulated database to default seed values? This clears all changes.')) {
-              localStorage.clear();
-              window.location.reload();
-            }
-          }}
-          title="Reset simulated database to defaults"
-          style={{ padding: '0.375rem 0.625rem', border: '1px solid #cbd5e1', fontSize: '0.75rem', fontWeight: 600 }}
-        >
-          Reset DB
-        </button>
+        {/* Reset Database Button (Super-Admin only) */}
+        {activeRole === 'super_admin' && (
+          <button 
+            className="btn btn-secondary btn-sm"
+            onClick={() => {
+              if (confirm('Reset simulated database to default seed values? This clears all changes.')) {
+                localStorage.clear();
+                window.location.reload();
+              }
+            }}
+            title="Reset simulated database to defaults"
+            style={{ padding: '0.375rem 0.625rem', border: '1px solid #cbd5e1', fontSize: '0.75rem', fontWeight: 600 }}
+          >
+            Reset DB
+          </button>
+        )}
 
         {/* Download Backup Button (Visible to Manager, Boss, Owner) */}
         {activeRole !== 'officer' && (

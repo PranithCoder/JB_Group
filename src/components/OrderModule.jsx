@@ -28,7 +28,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     status: 'pending',
     amount: '',
     payment_status: 'unpaid',
-    amount_paid: ''
+    amount_paid: '',
+    assigned_staff_id: ''
   });
 
   const refreshList = () => {
@@ -87,7 +88,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       status: 'pending',
       amount: '',
       payment_status: 'unpaid',
-      amount_paid: ''
+      amount_paid: '',
+      assigned_staff_id: ''
     });
     setCustSearch('');
     setEditingOrder(null);
@@ -105,7 +107,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       status: order.status,
       amount: order.amount,
       payment_status: order.payment_status,
-      amount_paid: order.amount_paid !== undefined ? order.amount_paid : (order.payment_status === 'paid' ? order.amount : 0)
+      amount_paid: order.amount_paid !== undefined ? order.amount_paid : (order.payment_status === 'paid' ? order.amount : 0),
+      assigned_staff_id: order.assigned_staff_id || ''
     });
     setCustSearch(matchingCust ? `${matchingCust.name} (${matchingCust.contact})` : '');
     setEditingOrder(order);
@@ -117,6 +120,10 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     try {
       if (!formData.customer_id) {
         alert('Please search and select a valid customer from the dropdown list.');
+        return;
+      }
+      if (!formData.assigned_staff_id) {
+        alert('Please select and assign a tailor to this order.');
         return;
       }
       if (!formData.delivery_date || !formData.amount) {
@@ -145,7 +152,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         status: formData.status,
         amount: Number(formData.amount),
         payment_status: formData.payment_status,
-        amount_paid: finalAmountPaid
+        amount_paid: finalAmountPaid,
+        assigned_staff_id: formData.assigned_staff_id
       };
 
       const result = db.saveOrder(payload);
@@ -364,6 +372,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                 <th>Order Date</th>
                 <th>Delivery Due Date</th>
                 <th>Service Type</th>
+                <th>Assigned Tailor</th>
                 <th>Notes</th>
                 <th>Amount</th>
                 <th>Payment</th>
@@ -374,7 +383,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan="10" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                  <td colSpan="11" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                     No matching orders found.
                   </td>
                 </tr>
@@ -439,6 +448,16 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                           {ord.dress_type}
                         </div>
+                      </td>
+                      <td>
+                        {ord.assignedStaff ? (
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{ord.assignedStaff.name}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{ord.assignedStaff.role}</div>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Unassigned</span>
+                        )}
                       </td>
                       <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ord.note}>
                         {ord.note || '—'}
@@ -600,6 +619,22 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       <option value="Stitching">Stitching (Bespoke)</option>
                       <option value="Alteration">Alteration/Fitting</option>
                       <option value="Repairs">Repairs & Stitching</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Assign Tailor *</label>
+                    <select 
+                      className="form-select"
+                      required
+                      value={formData.assigned_staff_id}
+                      onChange={e => setFormData({ ...formData, assigned_staff_id: e.target.value })}
+                    >
+                      <option value="" disabled>Select tailor/staff...</option>
+                      {db.getStaff().map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.role})
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="form-group">

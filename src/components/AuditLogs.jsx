@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../lib/db';
 import { ShieldCheck, ToggleLeft, ToggleRight, RotateCcw, Search, UserCheck, ShieldAlert, CheckCircle, RefreshCw } from 'lucide-react';
 
@@ -10,13 +10,15 @@ export default function AuditLogs({ activeRole, triggerUpdate }) {
     { id: 'usr-4', name: 'Sam Super', email: 'super@jbgroup.com', role: 'super_admin', status: 'Active' }
   ]);
 
-  const [auditLogs, setAuditLogs] = useState([
-    { id: 'log-1', timestamp: '2026-06-01 14:32:10', user: 'Alina Officer', action: 'Modified Order JB-2026-105', details: 'Quoted amount updated from $2400 to $2300 (Sent to Manager approval queue)', status: 'Pending Approval' },
-    { id: 'log-2', timestamp: '2026-06-01 11:15:04', user: 'Marcus Manager', action: 'Approved Complaint Ticket comp-2', details: 'Status set to Resolved; notes added: "Re-hemmed with heavy-duty fibers"', status: 'Executed' },
-    { id: 'log-3', timestamp: '2026-05-31 16:45:00', user: 'Alina Officer', action: 'Created Customer Bruce Wayne', details: 'Enrolled Bruce Wayne (+1 555-019-9999)', status: 'Executed' },
-    { id: 'log-4', timestamp: '2026-05-31 10:20:11', user: 'Marcus Manager', action: 'Recorded Purchase pur-1', details: 'Purchased 30m Egyptian Cotton ($375.00 total expense)', status: 'Executed' },
-    { id: 'log-5', timestamp: '2026-05-30 09:00:22', user: 'Alina Officer', action: 'Deleted Customer c-4', details: 'Attempted to delete Clara Oswald. Action blocked; redirected to approval queue', status: 'Blocked' }
-  ]);
+  const [auditLogs, setAuditLogs] = useState(() => db.getAuditLogs());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setAuditLogs(db.getAuditLogs());
+    };
+    window.addEventListener('jb_database_updated', handleUpdate);
+    return () => window.removeEventListener('jb_database_updated', handleUpdate);
+  }, []);
 
   const [notification, setNotification] = useState(null);
 
@@ -34,19 +36,42 @@ export default function AuditLogs({ activeRole, triggerUpdate }) {
   };
 
   const revertAction = (logId) => {
-    setAuditLogs(prev => prev.map(l => {
-      if (l.id === logId) {
-        return { ...l, status: 'Reverted' };
-      }
-      return l;
-    }));
-    setNotification(`Action ${logId} has been successfully overridden and reverted in database.`);
-    triggerUpdate();
-    setTimeout(() => setNotification(null), 3500);
+    const logs = db.getAuditLogs();
+    const logIndex = logs.findIndex(l => l.id === logId);
+    if (logIndex !== -1) {
+      const targetLog = logs[logIndex];
+      targetLog.status = 'Reverted';
+      db.saveAuditLog(targetLog);
+
+      // Log the revert action itself
+      db.addAuditLog('Reverted Action', `Reverted action log ${logId}: "${targetLog.action}"`);
+
+      setNotification(`Action ${logId} has been successfully overridden and reverted in database.`);
+      triggerUpdate();
+      setTimeout(() => setNotification(null), 3500);
+    }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+
+      {/* System Audit Diagnostic Box */}
+      <div style={{ 
+        padding: '1rem', 
+        backgroundColor: '#eff6ff', 
+        border: '1px solid #bfdbfe', 
+        borderRadius: '8px', 
+        fontSize: '0.825rem', 
+        color: '#1e40af',
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '0.25rem' 
+      }}>
+        <div style={{ fontWeight: 700 }}>🔍 System Audit Logs Diagnostic Hub:</div>
+        <div>Current Active Role: <strong>{activeRole}</strong></div>
+        <div>Total Logs in Database: <strong>{auditLogs.length}</strong></div>
+        <div>Latest Log ID: <strong>{auditLogs[0]?.id || 'N/A'}</strong></div>
+      </div>
       
       {notification && (
         <div className="alert-banner info">

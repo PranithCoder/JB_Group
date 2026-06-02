@@ -53,12 +53,12 @@ const getDateOffset = (days) => {
 };
 
 const DEFAULT_ORDERS = [
-  { id: 'ord-101', customer_id: 'c-1', order_no: 'JB-2026-101', order_date: getDateOffset(-5), delivery_date: getDateOffset(-1), completed_date: getDateOffset(-1), service_type: 'Stitching', dress_type: 'frock', note: 'Silk Evening Gown with emerald lace trim', status: 'completed', amount: 350.00, payment_status: 'paid' },
-  { id: 'ord-102', customer_id: 'c-2', order_no: 'JB-2026-102', order_date: getDateOffset(-4), delivery_date: getDateOffset(1), service_type: 'Alteration', dress_type: 'alteration', note: 'Three wool trousers waist and cuff adjustments', status: 'in-progress', amount: 90.00, payment_status: 'paid' },
-  { id: 'ord-103', customer_id: 'c-3', order_no: 'JB-2026-103', order_date: getDateOffset(-3), delivery_date: getDateOffset(2), service_type: 'Stitching', dress_type: 'shirt', note: 'Linen casual jacket, wooden buttons', status: 'in-progress', amount: 180.00, payment_status: 'unpaid' },
-  { id: 'ord-104', customer_id: 'c-4', order_no: 'JB-2026-104', order_date: getDateOffset(-6), delivery_date: getDateOffset(-2), completed_date: getDateOffset(-2), service_type: 'Alteration', dress_type: 'alteration', note: 'Sleeve adjustments on 2 denim jackets', status: 'completed', amount: 60.00, payment_status: 'paid' },
-  { id: 'ord-105', customer_id: 'c-5', order_no: 'JB-2026-105', order_date: getDateOffset(-1), delivery_date: getDateOffset(0), service_type: 'Stitching', dress_type: 'court suite', note: 'Bespoke Tuxedo with bulletproof fabric lining simulation', status: 'pending', amount: 2400.00, payment_status: 'unpaid' },
-  { id: 'ord-106', customer_id: 'c-1', order_no: 'JB-2026-106', order_date: getDateOffset(-10), delivery_date: getDateOffset(-3), completed_date: getDateOffset(-3), service_type: 'Stitching', dress_type: 'frock', note: 'Cotton summer dress, floral print', status: 'completed', amount: 150.00, payment_status: 'paid' }
+  { id: 'ord-101', customer_id: 'c-1', order_no: 'JB-2026-101', order_date: getDateOffset(-5), delivery_date: getDateOffset(-1), completed_date: getDateOffset(-1), service_type: 'Stitching', dress_type: 'frock', note: 'Silk Evening Gown with emerald lace trim', status: 'completed', amount: 350.00, payment_status: 'paid', assigned_staff_id: 'stf-1' },
+  { id: 'ord-102', customer_id: 'c-2', order_no: 'JB-2026-102', order_date: getDateOffset(-4), delivery_date: getDateOffset(1), service_type: 'Alteration', dress_type: 'alteration', note: 'Three wool trousers waist and cuff adjustments', status: 'in-progress', amount: 90.00, payment_status: 'paid', assigned_staff_id: 'stf-2' },
+  { id: 'ord-103', customer_id: 'c-3', order_no: 'JB-2026-103', order_date: getDateOffset(-3), delivery_date: getDateOffset(2), service_type: 'Stitching', dress_type: 'shirt', note: 'Linen casual jacket, wooden buttons', status: 'in-progress', amount: 180.00, payment_status: 'unpaid', assigned_staff_id: 'stf-3' },
+  { id: 'ord-104', customer_id: 'c-4', order_no: 'JB-2026-104', order_date: getDateOffset(-6), delivery_date: getDateOffset(-2), completed_date: getDateOffset(-2), service_type: 'Alteration', dress_type: 'alteration', note: 'Sleeve adjustments on 2 denim jackets', status: 'completed', amount: 60.00, payment_status: 'paid', assigned_staff_id: 'stf-2' },
+  { id: 'ord-105', customer_id: 'c-5', order_no: 'JB-2026-105', order_date: getDateOffset(-1), delivery_date: getDateOffset(0), service_type: 'Stitching', dress_type: 'court suite', note: 'Bespoke Tuxedo with bulletproof fabric lining simulation', status: 'pending', amount: 2400.00, payment_status: 'unpaid', assigned_staff_id: 'stf-1' },
+  { id: 'ord-106', customer_id: 'c-1', order_no: 'JB-2026-106', order_date: getDateOffset(-10), delivery_date: getDateOffset(-3), completed_date: getDateOffset(-3), service_type: 'Stitching', dress_type: 'frock', note: 'Cotton summer dress, floral print', status: 'completed', amount: 150.00, payment_status: 'paid', assigned_staff_id: 'stf-3' }
 ];
 
 const DEFAULT_STAFF = [
@@ -177,6 +177,14 @@ const DEFAULT_RETAIL_SALES = [
   { id: 'rs-102', customer_id: 'c-2', product_id: 'ri-4', qty: 2, unit_price: 1650.00, total_price: 3300.00, sale_date: getDateOffset(-1), payment_status: 'paid' }
 ];
 
+const DEFAULT_AUDIT_LOGS = [
+  { id: 'log-1', timestamp: '2026-06-01 14:32:10', user: 'Alina Officer', action: 'Modified Order JB-2026-105', details: 'Quoted amount updated from Rs. 2,400.00 to Rs. 2,300.00 (Sent to Manager approval queue)', status: 'Pending Approval' },
+  { id: 'log-2', timestamp: '2026-06-01 11:15:04', user: 'Marcus Manager', action: 'Approved Complaint Ticket comp-2', details: 'Status set to Resolved; notes added: "Re-hemmed with heavy-duty fibers"', status: 'Executed' },
+  { id: 'log-3', timestamp: '2026-05-31 16:45:00', user: 'Alina Officer', action: 'Created Customer Bruce Wayne', details: 'Enrolled Bruce Wayne (+1 555-019-9999)', status: 'Executed' },
+  { id: 'log-4', timestamp: '2026-05-31 10:20:11', user: 'Marcus Manager', action: 'Recorded Purchase pur-1', details: 'Purchased 30m Egyptian Cotton (Rs. 375.00 total expense)', status: 'Executed' },
+  { id: 'log-5', timestamp: '2026-05-30 09:00:22', user: 'Alina Officer', action: 'Deleted Customer c-4', details: 'Attempted to delete Clara Oswald. Action blocked; redirected to approval queue', status: 'Blocked' }
+];
+
 
 // Helper function to safely read from local storage without crashing
 const safeGetLocalStorage = (key, defaultVal) => {
@@ -203,7 +211,7 @@ const initLocalStorage = () => {
   const checkAndSeed = (key, defaultVal) => {
     try {
       const val = localStorage.getItem(key);
-      if (!val || val === 'undefined' || (isFirstRun && JSON.parse(val).length === 0)) {
+      if (!val || val === 'undefined' || JSON.parse(val).length === 0) {
         localStorage.setItem(key, JSON.stringify(defaultVal));
       }
     } catch (e) {
@@ -222,6 +230,7 @@ const initLocalStorage = () => {
   checkAndSeed('jb_approvals', DEFAULT_APPROVALS);
   checkAndSeed('jb_retail_inventory', DEFAULT_RETAIL_INVENTORY);
   checkAndSeed('jb_retail_sales', DEFAULT_RETAIL_SALES);
+  checkAndSeed('jb_audit_logs', DEFAULT_AUDIT_LOGS);
 
 
   if (!localStorage.getItem('jb_active_role')) {
@@ -268,8 +277,8 @@ const collectionsToSync = [
   { fsKey: 'complaints', lsKey: 'jb_complaints' },
   { fsKey: 'approvals', lsKey: 'jb_approvals' },
   { fsKey: 'retail_inventory', lsKey: 'jb_retail_inventory' },
-  { fsKey: 'retail_sales', lsKey: 'jb_retail_sales' }
-
+  { fsKey: 'retail_sales', lsKey: 'jb_retail_sales' },
+  { fsKey: 'audit_logs', lsKey: 'jb_audit_logs' }
 ];
 
 collectionsToSync.forEach(({ fsKey, lsKey }) => {
@@ -299,10 +308,25 @@ collectionsToSync.forEach(({ fsKey, lsKey }) => {
       return;
     }
 
-    const list = [];
+    let list = [];
     snapshot.forEach((docSnap) => {
       list.push(docSnap.data());
     });
+
+    // Merge logic to protect local-first edits against server rollbacks or sync delays
+    if (lsKey === 'jb_audit_logs' || lsKey === 'jb_retail_inventory') {
+      const localData = safeGetLocalStorage(lsKey, []);
+      const merged = [...list];
+      localData.forEach(localItem => {
+        if (localItem && localItem.id && !merged.some(remoteItem => remoteItem.id === localItem.id)) {
+          merged.push(localItem);
+        }
+      });
+      if (lsKey === 'jb_audit_logs') {
+        merged.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      }
+      list = merged;
+    }
 
     const localStr = localStorage.getItem(lsKey);
     const incomingStr = JSON.stringify(list);
@@ -395,6 +419,7 @@ export const db = {
   getOrders() {
     const orders = safeGetLocalStorage('jb_orders', []);
     const customers = this.getCustomers();
+    const staff = this.getStaff();
     return orders.map(ord => {
       let fallbackDressType = ord.dress_type;
       if (!fallbackDressType) {
@@ -419,7 +444,8 @@ export const db = {
         dress_type: fallbackDressType,
         amount_paid: amountPaid,
         completed_date: completedDate,
-        customer: customers.find(c => c.id === ord.customer_id) || { name: 'Unknown Customer' }
+        customer: customers.find(c => c.id === ord.customer_id) || { name: 'Unknown Customer' },
+        assignedStaff: staff.find(s => s.id === ord.assigned_staff_id) || null
       };
     });
   },
@@ -896,6 +922,7 @@ export const db = {
       zip.file('approvals.json', JSON.stringify(this.getApprovals(), null, 2));
       zip.file('retail_inventory.json', JSON.stringify(this.getRetailInventory(), null, 2));
       zip.file('retail_sales.json', JSON.stringify(this.getRetailSales(), null, 2));
+      zip.file('audit_logs.json', JSON.stringify(this.getAuditLogs(), null, 2));
 
       // Generate the ZIP file async
       const content = await zip.generateAsync({ type: 'blob' });
@@ -928,7 +955,28 @@ export const db = {
     if (product.id) {
       const index = list.findIndex(p => p.id === product.id);
       if (index !== -1) {
-        list[index] = { ...list[index], ...product };
+        const oldProduct = list[index];
+        const newProduct = { ...oldProduct, ...product };
+
+        // Compare price and stock count
+        const priceChanged = Number(oldProduct.retail_price) !== Number(newProduct.retail_price);
+        const stockChanged = Number(oldProduct.stock_on_hand) !== Number(newProduct.stock_on_hand);
+
+        if (priceChanged || stockChanged) {
+          const changeDetails = [];
+          if (priceChanged) {
+            changeDetails.push(`Price changed from Rs. ${Number(oldProduct.retail_price).toFixed(2)} to Rs. ${Number(newProduct.retail_price).toFixed(2)}`);
+          }
+          if (stockChanged) {
+            changeDetails.push(`Stock count adjusted from ${oldProduct.stock_on_hand} to ${newProduct.stock_on_hand}`);
+          }
+          this.addAuditLog(
+            `Amended Product ${newProduct.name}`,
+            changeDetails.join(', ')
+          );
+        }
+
+        list[index] = newProduct;
         savedProduct = list[index];
       }
     } else {
@@ -938,6 +986,12 @@ export const db = {
       product.retail_price = Number(product.retail_price || 0);
       list.unshift(product);
       savedProduct = product;
+
+      // Log new product creation
+      this.addAuditLog(
+        `Created Product ${product.name}`,
+        `Initial Stock: ${product.stock_on_hand}, Price: Rs. ${Number(product.retail_price).toFixed(2)}`
+      );
     }
     localStorage.setItem('jb_retail_inventory', JSON.stringify(list));
     if (savedProduct) syncToFirestore('retail_inventory', savedProduct);
@@ -951,11 +1005,63 @@ export const db = {
       return { status: 'error', message: 'Deleting retail products requires Manager or Owner role!' };
     }
     let list = this.getRetailInventory();
+    const product = list.find(p => p.id === id);
     list = list.filter(p => p.id !== id);
     localStorage.setItem('jb_retail_inventory', JSON.stringify(list));
     deleteFromFirestore('retail_inventory', id);
+    if (product) {
+      this.addAuditLog(
+        `Deleted Product ${product.name}`,
+        `Removed product from catalog (ID: ${id})`
+      );
+    }
     window.dispatchEvent(new Event('jb_database_updated'));
     return { status: 'success' };
+  },
+
+  // ----------------------------------------------------
+  // Audit Logs Module
+  // ----------------------------------------------------
+  getAuditLogs() {
+    const logs = safeGetLocalStorage('jb_audit_logs', []);
+    return logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  },
+
+  saveAuditLog(log) {
+    const logs = this.getAuditLogs();
+    const index = logs.findIndex(l => l.id === log.id);
+    if (index !== -1) {
+      logs[index] = { ...logs[index], ...log };
+      localStorage.setItem('jb_audit_logs', JSON.stringify(logs));
+      syncToFirestore('audit_logs', logs[index]);
+      window.dispatchEvent(new Event('jb_database_updated'));
+    }
+  },
+
+  addAuditLog(action, details, status = 'Executed') {
+    const logs = this.getAuditLogs();
+    const role = this.getActiveRole();
+    const userObj = DEFAULT_USERS.find(u => u.role === role);
+    const userName = userObj ? userObj.name : (role.charAt(0).toUpperCase() + role.slice(1));
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+    const newLog = {
+      id: 'log-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      timestamp,
+      user: userName,
+      action,
+      details,
+      status
+    };
+
+    logs.unshift(newLog);
+    localStorage.setItem('jb_audit_logs', JSON.stringify(logs));
+    syncToFirestore('audit_logs', newLog);
+    window.dispatchEvent(new Event('jb_database_updated'));
+    return newLog;
   },
 
   getRetailSales() {
