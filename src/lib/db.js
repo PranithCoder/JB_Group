@@ -1,5 +1,34 @@
-// Database simulation layer using localStorage.
-// Initialized with realistic sample data to power a data-rich premium dashboard.
+import { firestore } from './firebase';
+import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+
+export const DRESS_TYPES = [
+  'alteration',
+  'school uniform',
+  'saree blouse',
+  'frock',
+  'salwar set',
+  'top',
+  'top set',
+  'school court',
+  'uniform',
+  'pinoform',
+  'baby frock',
+  'shirt',
+  'leghanga',
+  'nursing dress',
+  'court suite',
+  'nurising uniform',
+  'halfsaree',
+  'skirt and blouse',
+  'NAITA Court',
+  'trouser',
+  'shorts',
+  'modern dress (Custom)',
+  'hospital court',
+  'school badges',
+  'black shorts',
+  'operation theater court'
+];
 
 const DEFAULT_USERS = [
   { id: 'usr-1', name: 'Alina Officer', email: 'officer@jbgroup.com', role: 'officer' },
@@ -24,12 +53,12 @@ const getDateOffset = (days) => {
 };
 
 const DEFAULT_ORDERS = [
-  { id: 'ord-101', customer_id: 'c-1', order_no: 'JB-2026-101', order_date: getDateOffset(-5), delivery_date: getDateOffset(-1), service_type: 'Stitching', note: 'Silk Evening Gown with emerald lace trim', status: 'completed', amount: 350.00, payment_status: 'paid' },
-  { id: 'ord-102', customer_id: 'c-2', order_no: 'JB-2026-102', order_date: getDateOffset(-4), delivery_date: getDateOffset(1), service_type: 'Alteration', note: 'Three wool trousers waist and cuff adjustments', status: 'in-progress', amount: 90.00, payment_status: 'paid' },
-  { id: 'ord-103', customer_id: 'c-3', order_no: 'JB-2026-103', order_date: getDateOffset(-3), delivery_date: getDateOffset(2), service_type: 'Stitching', note: 'Linen casual jacket, wooden buttons', status: 'in-progress', amount: 180.00, payment_status: 'unpaid' },
-  { id: 'ord-104', customer_id: 'c-4', order_no: 'JB-2026-104', order_date: getDateOffset(-6), delivery_date: getDateOffset(-2), service_type: 'Alteration', note: 'Sleeve adjustments on 2 denim jackets', status: 'completed', amount: 60.00, payment_status: 'paid' },
-  { id: 'ord-105', customer_id: 'c-5', order_no: 'JB-2026-105', order_date: getDateOffset(-1), delivery_date: getDateOffset(0), service_type: 'Stitching', note: 'Bespoke Tuxedo with bulletproof fabric lining simulation', status: 'pending', amount: 2400.00, payment_status: 'unpaid' },
-  { id: 'ord-106', customer_id: 'c-1', order_no: 'JB-2026-106', order_date: getDateOffset(-10), delivery_date: getDateOffset(-3), service_type: 'Stitching', note: 'Cotton summer dress, floral print', status: 'completed', amount: 150.00, payment_status: 'paid' }
+  { id: 'ord-101', customer_id: 'c-1', order_no: 'JB-2026-101', order_date: getDateOffset(-5), delivery_date: getDateOffset(-1), completed_date: getDateOffset(-1), service_type: 'Stitching', dress_type: 'frock', note: 'Silk Evening Gown with emerald lace trim', status: 'completed', amount: 350.00, payment_status: 'paid' },
+  { id: 'ord-102', customer_id: 'c-2', order_no: 'JB-2026-102', order_date: getDateOffset(-4), delivery_date: getDateOffset(1), service_type: 'Alteration', dress_type: 'alteration', note: 'Three wool trousers waist and cuff adjustments', status: 'in-progress', amount: 90.00, payment_status: 'paid' },
+  { id: 'ord-103', customer_id: 'c-3', order_no: 'JB-2026-103', order_date: getDateOffset(-3), delivery_date: getDateOffset(2), service_type: 'Stitching', dress_type: 'shirt', note: 'Linen casual jacket, wooden buttons', status: 'in-progress', amount: 180.00, payment_status: 'unpaid' },
+  { id: 'ord-104', customer_id: 'c-4', order_no: 'JB-2026-104', order_date: getDateOffset(-6), delivery_date: getDateOffset(-2), completed_date: getDateOffset(-2), service_type: 'Alteration', dress_type: 'alteration', note: 'Sleeve adjustments on 2 denim jackets', status: 'completed', amount: 60.00, payment_status: 'paid' },
+  { id: 'ord-105', customer_id: 'c-5', order_no: 'JB-2026-105', order_date: getDateOffset(-1), delivery_date: getDateOffset(0), service_type: 'Stitching', dress_type: 'court suite', note: 'Bespoke Tuxedo with bulletproof fabric lining simulation', status: 'pending', amount: 2400.00, payment_status: 'unpaid' },
+  { id: 'ord-106', customer_id: 'c-1', order_no: 'JB-2026-106', order_date: getDateOffset(-10), delivery_date: getDateOffset(-3), completed_date: getDateOffset(-3), service_type: 'Stitching', dress_type: 'frock', note: 'Cotton summer dress, floral print', status: 'completed', amount: 150.00, payment_status: 'paid' }
 ];
 
 const DEFAULT_STAFF = [
@@ -127,7 +156,7 @@ const DEFAULT_APPROVALS = [
     request_date: getDateOffset(0),
     entity_type: 'orders',
     entity_id: 'ord-105',
-    details: 'Requested changing delivery date of JB-2026-105 to tomorrow and discount total to $2,300.00',
+    details: 'Requested changing delivery date of JB-2026-105 to tomorrow and discount total to Rs. 2,300.00',
     original_data: { delivery_date: getDateOffset(0), amount: 2400.00 },
     proposed_data: { delivery_date: getDateOffset(1), amount: 2300.00 },
     status: 'pending',
@@ -188,6 +217,79 @@ const initLocalStorage = () => {
 
 initLocalStorage();
 
+const syncToFirestore = async (fsKey, item) => {
+  if (!item || !item.id) return;
+  try {
+    const cleanItem = JSON.parse(JSON.stringify(item));
+    if (cleanItem.customer) delete cleanItem.customer;
+    if (cleanItem.assignedStaff) delete cleanItem.assignedStaff;
+    if (cleanItem.item) delete cleanItem.item;
+    if (cleanItem.order) delete cleanItem.order;
+    await setDoc(doc(firestore, fsKey, item.id), cleanItem);
+  } catch (err) {
+    console.error(`Error syncing to Firestore (${fsKey}/${item.id}):`, err);
+  }
+};
+
+const deleteFromFirestore = async (fsKey, id) => {
+  if (!id) return;
+  try {
+    await deleteDoc(doc(firestore, fsKey, id));
+  } catch (err) {
+    console.error(`Error deleting from Firestore (${fsKey}/${id}):`, err);
+  }
+};
+
+const collectionsToSync = [
+  { fsKey: 'customers', lsKey: 'jb_customers' },
+  { fsKey: 'orders', lsKey: 'jb_orders' },
+  { fsKey: 'staff', lsKey: 'jb_staff' },
+  { fsKey: 'attendance', lsKey: 'jb_attendance' },
+  { fsKey: 'inventory', lsKey: 'jb_inventory' },
+  { fsKey: 'purchases', lsKey: 'jb_purchases' },
+  { fsKey: 'complaints', lsKey: 'jb_complaints' },
+  { fsKey: 'approvals', lsKey: 'jb_approvals' }
+];
+
+collectionsToSync.forEach(({ fsKey, lsKey }) => {
+  const colRef = collection(firestore, fsKey);
+  onSnapshot(colRef, (snapshot) => {
+    if (snapshot.empty) {
+      const localData = safeGetLocalStorage(lsKey, []);
+      if (localData.length > 0) {
+        console.log(`Firestore collection "${fsKey}" is empty. Seeding from local storage...`);
+        localData.forEach(async (item) => {
+          if (item && item.id) {
+            try {
+              const cleanItem = JSON.parse(JSON.stringify(item));
+              if (cleanItem.customer) delete cleanItem.customer;
+              if (cleanItem.assignedStaff) delete cleanItem.assignedStaff;
+              if (cleanItem.item) delete cleanItem.item;
+              if (cleanItem.order) delete cleanItem.order;
+              await setDoc(doc(firestore, fsKey, item.id), cleanItem);
+            } catch (err) {
+              console.error(`Seeding error for ${fsKey}/${item.id}:`, err);
+            }
+          }
+        });
+      }
+      return;
+    }
+
+    const list = [];
+    snapshot.forEach((docSnap) => {
+      list.push(docSnap.data());
+    });
+
+    const localStr = localStorage.getItem(lsKey);
+    const incomingStr = JSON.stringify(list);
+    if (localStr !== incomingStr) {
+      localStorage.setItem(lsKey, incomingStr);
+      window.dispatchEvent(new Event('jb_database_updated'));
+    }
+  });
+});
+
 // Standard CRUD interfaces that pull/push from LocalStorage and trigger notifications
 
 export const db = {
@@ -210,28 +312,29 @@ export const db = {
 
   saveCustomer(customer) {
     const list = this.getCustomers();
+    let savedCustomer;
     if (customer.id) {
-      // Modify
       const index = list.findIndex(c => c.id === customer.id);
       if (index !== -1) {
         list[index] = { ...list[index], ...customer };
+        savedCustomer = list[index];
       }
     } else {
-      // New
       customer.id = 'c-' + Date.now();
       customer.serviceHistoryCount = 0;
       customer.status = 'Active';
       list.unshift(customer);
+      savedCustomer = customer;
     }
     localStorage.setItem('jb_customers', JSON.stringify(list));
+    if (savedCustomer) syncToFirestore('customers', savedCustomer);
     window.dispatchEvent(new Event('jb_database_updated'));
-    return customer;
+    return savedCustomer || customer;
   },
 
   deleteCustomer(id) {
     const role = this.getActiveRole();
     if (role === 'officer') {
-      // Officer requires Manager approval
       const c = this.getCustomers().find(cust => cust.id === id);
       const app = {
         id: 'appr-' + Date.now(),
@@ -250,14 +353,15 @@ export const db = {
       const approvals = this.getApprovals();
       approvals.unshift(app);
       localStorage.setItem('jb_approvals', JSON.stringify(approvals));
+      syncToFirestore('approvals', app);
       window.dispatchEvent(new Event('jb_database_updated'));
       return { status: 'pending_approval', approvalId: app.id };
     }
 
-    // Manager / Super-Admin can delete immediately
     let list = this.getCustomers();
     list = list.filter(c => c.id !== id);
     localStorage.setItem('jb_customers', JSON.stringify(list));
+    deleteFromFirestore('customers', id);
     window.dispatchEvent(new Event('jb_database_updated'));
     return { status: 'success' };
   },
@@ -268,10 +372,33 @@ export const db = {
   getOrders() {
     const orders = safeGetLocalStorage('jb_orders', []);
     const customers = this.getCustomers();
-    return orders.map(ord => ({
-      ...ord,
-      customer: customers.find(c => c.id === ord.customer_id) || { name: 'Unknown Customer' }
-    }));
+    return orders.map(ord => {
+      let fallbackDressType = ord.dress_type;
+      if (!fallbackDressType) {
+        const noteLower = (ord.note || '').toLowerCase();
+        if (noteLower.includes('trouser') || noteLower.includes('shorts') || noteLower.includes('pants')) fallbackDressType = 'trouser';
+        else if (noteLower.includes('dress') || noteLower.includes('gown') || noteLower.includes('frock')) fallbackDressType = 'frock';
+        else if (noteLower.includes('jacket') || noteLower.includes('tuxedo') || noteLower.includes('suit')) fallbackDressType = 'court suite';
+        else if (noteLower.includes('shirt')) fallbackDressType = 'shirt';
+        else if (ord.service_type === 'Alteration') fallbackDressType = 'alteration';
+        else fallbackDressType = 'modern dress (Custom)';
+      }
+      let amountPaid = ord.amount_paid;
+      if (amountPaid === undefined) {
+        amountPaid = ord.payment_status === 'paid' ? ord.amount : 0;
+      }
+      let completedDate = ord.completed_date;
+      if (ord.status === 'completed' && !completedDate) {
+        completedDate = ord.delivery_date || ord.order_date;
+      }
+      return {
+        ...ord,
+        dress_type: fallbackDressType,
+        amount_paid: amountPaid,
+        completed_date: completedDate,
+        customer: customers.find(c => c.id === ord.customer_id) || { name: 'Unknown Customer' }
+      };
+    });
   },
 
   saveOrder(order) {
@@ -292,7 +419,7 @@ export const db = {
           request_date: getDateOffset(0),
           entity_type: 'orders',
           entity_id: order.id,
-          details: `Change Delivery Date from ${original.delivery_date} to ${order.delivery_date}, and Amount from $${original.amount} to $${order.amount}`,
+          details: `Change Delivery Date from ${original.delivery_date} to ${order.delivery_date}, and Amount from Rs. ${original.amount} to Rs. ${order.amount}`,
           original_data: original,
           proposed_data: order,
           status: 'pending',
@@ -302,6 +429,7 @@ export const db = {
         const approvals = this.getApprovals();
         approvals.unshift(app);
         localStorage.setItem('jb_approvals', JSON.stringify(approvals));
+        syncToFirestore('approvals', app);
         window.dispatchEvent(new Event('jb_database_updated'));
         return { status: 'pending_approval', approvalId: app.id };
       }
@@ -309,7 +437,12 @@ export const db = {
       // Execute directly
       const index = list.findIndex(o => o.id === order.id);
       if (index !== -1) {
-        list[index] = { ...list[index], ...order };
+        let updatedOrder = { ...order };
+        if (order.status === 'completed' && original.status !== 'completed') {
+          updatedOrder.completed_date = getDateOffset(0);
+        }
+        list[index] = { ...list[index], ...updatedOrder };
+        syncToFirestore('orders', list[index]);
         // If order gets completed, automatically decrement some stock for demo
         if (order.status === 'completed' && original.status !== 'completed') {
           this.decrementStockForOrder(order);
@@ -320,7 +453,11 @@ export const db = {
       order.id = 'ord-' + Date.now();
       order.order_no = 'JB-2026-' + (list.length + 101);
       order.order_date = getDateOffset(0);
+      if (order.status === 'completed') {
+        order.completed_date = getDateOffset(0);
+      }
       list.unshift(order);
+      syncToFirestore('orders', order);
 
       // Increment customer's order history
       const customers = this.getCustomers();
@@ -328,6 +465,7 @@ export const db = {
       if (cIndex !== -1) {
         customers[cIndex].serviceHistoryCount = (customers[cIndex].serviceHistoryCount || 0) + 1;
         localStorage.setItem('jb_customers', JSON.stringify(customers));
+        syncToFirestore('customers', customers[cIndex]);
       }
     }
     
@@ -346,18 +484,21 @@ export const db = {
       if (thread && thread.stock_on_hand > 0) {
         thread.stock_on_hand -= 1;
         hasUpdated = true;
+        syncToFirestore('inventory', thread);
       }
       // Fabric
       const fabric = items.find(i => i.category === 'Fabrics' && i.stock_on_hand > 5);
       if (fabric) {
         fabric.stock_on_hand -= 2;
         hasUpdated = true;
+        syncToFirestore('inventory', fabric);
       }
       // Buttons
       const buttons = items.find(i => i.category === 'Buttons' && i.stock_on_hand > 0);
       if (buttons) {
         buttons.stock_on_hand -= 1;
         hasUpdated = true;
+        syncToFirestore('inventory', buttons);
       }
     }
     if (hasUpdated) {
@@ -386,6 +527,7 @@ export const db = {
       const approvals = this.getApprovals();
       approvals.unshift(app);
       localStorage.setItem('jb_approvals', JSON.stringify(approvals));
+      syncToFirestore('approvals', app);
       window.dispatchEvent(new Event('jb_database_updated'));
       return { status: 'pending_approval', approvalId: app.id };
     }
@@ -393,6 +535,7 @@ export const db = {
     let list = safeGetLocalStorage('jb_orders', []);
     list = list.filter(o => o.id !== id);
     localStorage.setItem('jb_orders', JSON.stringify(list));
+    deleteFromFirestore('orders', id);
     window.dispatchEvent(new Event('jb_database_updated'));
     return { status: 'success' };
   },
@@ -406,19 +549,23 @@ export const db = {
 
   saveStaff(employee) {
     const list = this.getStaff();
+    let savedStaff;
     if (employee.id) {
       const index = list.findIndex(e => e.id === employee.id);
       if (index !== -1) {
         list[index] = { ...list[index], ...employee };
+        savedStaff = list[index];
       }
     } else {
       employee.id = 'stf-' + Date.now();
       employee.leaves = { sick: 12, casual: 12, vacation: 15 };
       list.push(employee);
+      savedStaff = employee;
     }
     localStorage.setItem('jb_staff', JSON.stringify(list));
+    if (savedStaff) syncToFirestore('staff', savedStaff);
     window.dispatchEvent(new Event('jb_database_updated'));
-    return employee;
+    return savedStaff || employee;
   },
 
   getAttendance() {
@@ -439,19 +586,24 @@ export const db = {
         if (staffIndex !== -1 && staffList[staffIndex].leaves[record.leave_type] > 0) {
           staffList[staffIndex].leaves[record.leave_type] -= 1;
           localStorage.setItem('jb_staff', JSON.stringify(staffList));
+          syncToFirestore('staff', staffList[staffIndex]);
         }
       }
     }
 
+    let savedRecord;
     if (index !== -1) {
       list[index] = { ...list[index], ...record };
+      savedRecord = list[index];
     } else {
       record.id = `att-${record.staff_id}-${record.date}`;
       list.push(record);
+      savedRecord = record;
     }
     localStorage.setItem('jb_attendance', JSON.stringify(list));
+    if (savedRecord) syncToFirestore('attendance', savedRecord);
     window.dispatchEvent(new Event('jb_database_updated'));
-    return record;
+    return savedRecord || record;
   },
 
   generateMonthlyPayroll(monthYearString) {
@@ -519,10 +671,12 @@ export const db = {
 
   saveInventoryItem(item) {
     const list = this.getInventory();
+    let savedItem;
     if (item.id) {
       const index = list.findIndex(i => i.id === item.id);
       if (index !== -1) {
         list[index] = { ...list[index], ...item };
+        savedItem = list[index];
       }
     } else {
       item.id = 'inv-' + Date.now();
@@ -530,10 +684,12 @@ export const db = {
       item.reorder_threshold = Number(item.reorder_threshold || 0);
       item.unit_cost = Number(item.unit_cost || 0);
       list.push(item);
+      savedItem = item;
     }
     localStorage.setItem('jb_inventory', JSON.stringify(list));
+    if (savedItem) syncToFirestore('inventory', savedItem);
     window.dispatchEvent(new Event('jb_database_updated'));
-    return item;
+    return savedItem || item;
   },
 
   deleteInventoryItem(id) {
@@ -544,6 +700,7 @@ export const db = {
     let list = this.getInventory();
     list = list.filter(i => i.id !== id);
     localStorage.setItem('jb_inventory', JSON.stringify(list));
+    deleteFromFirestore('inventory', id);
     window.dispatchEvent(new Event('jb_database_updated'));
     return { status: 'success' };
   },
@@ -567,6 +724,7 @@ export const db = {
     purchase.total_cost = Number(purchase.total_cost || 0);
 
     purchases.unshift(purchase);
+    syncToFirestore('purchases', purchase);
 
     const itemIndex = inventory.findIndex(i => i.id === purchase.item_id);
     if (itemIndex !== -1) {
@@ -575,6 +733,7 @@ export const db = {
         inventory[itemIndex].unit_cost = Number((purchase.total_cost / purchase.quantity).toFixed(2));
       }
       localStorage.setItem('jb_inventory', JSON.stringify(inventory));
+      syncToFirestore('inventory', inventory[itemIndex]);
     }
 
     localStorage.setItem('jb_purchases', JSON.stringify(purchases));
@@ -602,11 +761,13 @@ export const db = {
   saveComplaint(complaint) {
     const list = safeGetLocalStorage('jb_complaints', []);
     let isNew = false;
+    let savedComplaint;
     
     if (complaint.id) {
       const index = list.findIndex(c => c.id === complaint.id);
       if (index !== -1) {
         list[index] = { ...list[index], ...complaint };
+        savedComplaint = list[index];
       }
     } else {
       isNew = true;
@@ -614,9 +775,11 @@ export const db = {
       complaint.date_reported = getDateOffset(0);
       complaint.status = complaint.status || 'In Review';
       list.unshift(complaint);
+      savedComplaint = complaint;
     }
     
     localStorage.setItem('jb_complaints', JSON.stringify(list));
+    if (savedComplaint) syncToFirestore('complaints', savedComplaint);
     window.dispatchEvent(new Event('jb_database_updated'));
 
     if (isNew) {
@@ -625,7 +788,7 @@ export const db = {
       this.triggerCustomerNotification(complaint, 'Complaint Resolved');
     }
 
-    return complaint;
+    return savedComplaint || complaint;
   },
 
   triggerCustomerNotification(complaint, type) {
@@ -668,8 +831,10 @@ export const db = {
         if (ordIndex !== -1) {
           if (app.proposed_data) {
             orders[ordIndex] = { ...orders[ordIndex], ...app.proposed_data };
+            syncToFirestore('orders', orders[ordIndex]);
           } else {
             orders.splice(ordIndex, 1);
+            deleteFromFirestore('orders', app.entity_id);
           }
           localStorage.setItem('jb_orders', JSON.stringify(orders));
         }
@@ -677,13 +842,52 @@ export const db = {
         if (!app.proposed_data) {
           let customers = this.getCustomers();
           customers = customers.filter(c => c.id !== app.entity_id);
+          deleteFromFirestore('customers', app.entity_id);
           localStorage.setItem('jb_customers', JSON.stringify(customers));
         }
       }
     }
 
     localStorage.setItem('jb_approvals', JSON.stringify(approvals));
+    syncToFirestore('approvals', app);
     window.dispatchEvent(new Event('jb_database_updated'));
     return app;
+  },
+
+  // ----------------------------------------------------
+  // Database Backup Download (.zip)
+  // ----------------------------------------------------
+  async downloadBackup() {
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      // Format current snapshots from db helper methods
+      zip.file('customers.json', JSON.stringify(this.getCustomers(), null, 2));
+      zip.file('orders.json', JSON.stringify(this.getOrders(), null, 2));
+      zip.file('staff.json', JSON.stringify(this.getStaff(), null, 2));
+      zip.file('attendance.json', JSON.stringify(this.getAttendance(), null, 2));
+      zip.file('inventory.json', JSON.stringify(this.getInventory(), null, 2));
+      zip.file('purchases.json', JSON.stringify(this.getPurchases(), null, 2));
+      zip.file('complaints.json', JSON.stringify(this.getComplaints(), null, 2));
+      zip.file('approvals.json', JSON.stringify(this.getApprovals(), null, 2));
+
+      // Generate the ZIP file async
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      
+      // Trigger user browser download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `jb_group_backup_${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error generating backup zip:', err);
+      alert('Failed to generate database backup. See console for details.');
+    }
   }
 };
+

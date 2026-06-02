@@ -342,7 +342,12 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
                               <td style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={o.note}>{o.note}</td>
                               <td style={{ fontWeight: 600 }}>${Number(o.amount || 0).toFixed(2)}</td>
                               <td>
-                                <span className={`badge ${o.payment_status === 'paid' ? 'success' : 'danger'}`}>{o.payment_status}</span>
+                                 <span className={`badge ${
+                                   o.payment_status === 'paid' ? 'success' : 
+                                   o.payment_status === 'partially_paid' ? 'warning' : 'danger'
+                                 }`}>
+                                   {o.payment_status === 'partially_paid' ? 'partially paid' : o.payment_status}
+                                 </span>
                               </td>
                               <td>
                                 <span className={`badge ${o.status === 'completed' ? 'success' : o.status === 'in-progress' ? 'warning' : 'info'}`}>

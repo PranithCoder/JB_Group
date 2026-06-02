@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { db } from '../lib/db';
+import { db, DRESS_TYPES } from '../lib/db';
 import { Search, Plus, Edit2, Trash2, X, AlertTriangle, Eye, RefreshCw, Calendar, ShoppingBag } from 'lucide-react';
 
 export default function OrderModule({ activeRole, triggerUpdate }) {
@@ -15,16 +15,20 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   const [showCustDropdown, setShowCustDropdown] = useState(false);
   const [newlyBookedOrder, setNewlyBookedOrder] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [viewingCustomer, setViewingCustomer] = useState(null);
+  const [completedFromDate, setCompletedFromDate] = useState('2026-06-01');
+  const [completedToDate, setCompletedToDate] = useState('2026-06-01');
 
-  // Form State
   const [formData, setFormData] = useState({
     customer_id: '',
     delivery_date: '',
     service_type: 'Stitching',
+    dress_type: 'modern dress (Custom)',
     note: '',
     status: 'pending',
     amount: '',
-    payment_status: 'unpaid'
+    payment_status: 'unpaid',
+    amount_paid: ''
   });
 
   const refreshList = () => {
@@ -66,6 +70,10 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     if (statusFilter === 'all') return true;
     if (statusFilter === 'overdue') return isOverdue(o);
     if (statusFilter === 'soon') return isDueSoon(o);
+    if (statusFilter === 'completed') {
+      const compDate = o.completed_date || o.delivery_date;
+      return o.status === 'completed' && compDate >= completedFromDate && compDate <= completedToDate;
+    }
     return o.status === statusFilter;
   });
 
@@ -74,10 +82,12 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       customer_id: '',
       delivery_date: new Date('2026-06-03').toISOString().split('T')[0], // Default 2 days out
       service_type: 'Stitching',
+      dress_type: 'modern dress (Custom)',
       note: '',
       status: 'pending',
       amount: '',
-      payment_status: 'unpaid'
+      payment_status: 'unpaid',
+      amount_paid: ''
     });
     setCustSearch('');
     setEditingOrder(null);
@@ -90,10 +100,12 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       customer_id: order.customer_id,
       delivery_date: order.delivery_date,
       service_type: order.service_type,
+      dress_type: order.dress_type || 'modern dress (Custom)',
       note: order.note || '',
       status: order.status,
       amount: order.amount,
-      payment_status: order.payment_status
+      payment_status: order.payment_status,
+      amount_paid: order.amount_paid !== undefined ? order.amount_paid : (order.payment_status === 'paid' ? order.amount : 0)
     });
     setCustSearch(matchingCust ? `${matchingCust.name} (${matchingCust.contact})` : '');
     setEditingOrder(order);
@@ -112,15 +124,28 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         return;
       }
 
+      let finalAmountPaid = 0;
+      if (formData.payment_status === 'paid') {
+        finalAmountPaid = Number(formData.amount);
+      } else if (formData.payment_status === 'partially_paid') {
+        finalAmountPaid = Number(formData.amount_paid);
+        if (isNaN(finalAmountPaid) || finalAmountPaid <= 0 || finalAmountPaid >= Number(formData.amount)) {
+          alert('For partially paid status, please enter a valid paid amount (greater than 0 and less than the quoted price).');
+          return;
+        }
+      }
+
       const payload = {
         ...(editingOrder ? { id: editingOrder.id } : {}),
         customer_id: formData.customer_id,
         delivery_date: formData.delivery_date,
         service_type: formData.service_type,
+        dress_type: formData.dress_type,
         note: formData.note,
         status: formData.status,
         amount: Number(formData.amount),
-        payment_status: formData.payment_status
+        payment_status: formData.payment_status,
+        amount_paid: finalAmountPaid
       };
 
       const result = db.saveOrder(payload);
@@ -301,6 +326,28 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                 Due ≤ 2 Days
               </button>
             </div>
+
+            {statusFilter === 'completed' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.825rem', padding: '0.25rem 0.5rem', backgroundColor: '#fafafa', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>From:</span>
+                <input 
+                  type="date" 
+                  className="form-input" 
+                  style={{ padding: '0.125rem 0.375rem', fontSize: '0.75rem', width: 'auto', border: 'none', background: 'none' }}
+                  value={completedFromDate}
+                  onChange={e => setCompletedFromDate(e.target.value)}
+                />
+                <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>To:</span>
+                <input 
+                  type="date" 
+                  className="form-input" 
+                  style={{ padding: '0.125rem 0.375rem', fontSize: '0.75rem', width: 'auto', border: 'none', background: 'none' }}
+                  value={completedToDate}
+                  onChange={e => setCompletedToDate(e.target.value)}
+                />
+              </div>
+            )}
+
             <button className="btn btn-secondary btn-sm" onClick={refreshList}>
               <RefreshCw size={14} />
             </button>
@@ -348,12 +395,38 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       dueLabel = `${ord.delivery_date} (${daysLeft}d left)`;
                       styleClass = 'text-amber';
                     }
+                  } else {
+                    dueLabel = `Delivered: ${ord.completed_date || ord.delivery_date}`;
+                    styleClass = 'text-green';
                   }
 
                   return (
                     <tr key={ord.id} style={{ backgroundColor: isOverdue(ord) ? 'var(--color-danger-light)' : 'inherit' }}>
                       <td style={{ fontWeight: 600 }}>{ord.order_no}</td>
-                      <td>{ord.customer?.name || '—'}</td>
+                      <td>
+                        {ord.customer ? (
+                          <button 
+                            type="button"
+                            onClick={() => setViewingCustomer(ord.customer)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              margin: 0,
+                              fontFamily: 'inherit',
+                              fontSize: 'inherit',
+                              fontWeight: 600,
+                              color: 'var(--color-primary)',
+                              cursor: 'pointer',
+                              textDecoration: 'underline',
+                              textAlign: 'left'
+                            }}
+                            title="Click to view customer details"
+                          >
+                            {ord.customer.name}
+                          </button>
+                        ) : '—'}
+                      </td>
                       <td>{ord.order_date}</td>
                       <td className={styleClass} style={{ fontWeight: styleClass ? '600' : 'normal' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
@@ -361,18 +434,40 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                           <span>{dueLabel}</span>
                         </div>
                       </td>
-                      <td>{ord.service_type}</td>
+                      <td>
+                        <div style={{ fontWeight: 500 }}>{ord.service_type}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                          {ord.dress_type}
+                        </div>
+                      </td>
                       <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ord.note}>
                         {ord.note || '—'}
                       </td>
-                      <td style={{ fontWeight: 600 }}>${Number(ord.amount || 0).toFixed(2)}</td>
+                      <td style={{ fontWeight: 600 }}>Rs. {Number(ord.amount || 0).toFixed(2)}</td>
                       <td>
-                        <span className={`badge ${ord.payment_status === 'paid' ? 'success' : 'danger'}`}>
-                          {ord.payment_status}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <span className={`badge ${
+                            ord.payment_status === 'paid' ? 'success' : 
+                            ord.payment_status === 'partially_paid' ? 'warning' : 'danger'
+                          }`}>
+                            {ord.payment_status === 'partially_paid' ? 'partially paid' : ord.payment_status}
+                          </span>
+                          {ord.payment_status === 'partially_paid' && (
+                            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
+                              Paid: Rs. {Number(ord.amount_paid || 0).toFixed(2)}<br/>
+                              Bal: Rs. {Number(ord.amount - (ord.amount_paid || 0)).toFixed(2)}
+                            </div>
+                          )}
+                          {ord.payment_status === 'unpaid' && (
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-danger)', fontWeight: 500 }}>
+                              Bal: Rs. {Number(ord.amount).toFixed(2)}
+                            </div>
+                          )}
+
+                        </div>
                       </td>
                       <td>
-                        {isReadOnly ? (
+                        {isReadOnly || ord.status === 'completed' ? (
                           <span className={`badge ${
                             ord.status === 'completed' ? 'success' : 
                             ord.status === 'in-progress' ? 'warning' : 'info'
@@ -411,12 +506,12 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                           <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem' }} onClick={() => viewAuditLog(ord)} title="Audit Trail">
                             <Eye size={14} /> Audit
                           </button>
-                          {!isReadOnly && (
+                          {!isReadOnly && ord.status !== 'completed' && (
                             <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openEditModal(ord)} title="Edit Order Details">
                               <Edit2 size={14} />
                             </button>
                           )}
-                          {!isReadOnly && (
+                          {!isReadOnly && ord.status !== 'completed' && (
                             <button className="btn btn-secondary btn-sm text-red" style={{ padding: '0.25rem 0.5rem' }} onClick={() => handleDelete(ord.id)} title="Delete Order">
                               <Trash2 size={14} />
                             </button>
@@ -508,6 +603,20 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     </select>
                   </div>
                   <div className="form-group">
+                    <label className="form-label">Dress Type *</label>
+                    <select 
+                      className="form-select"
+                      value={formData.dress_type || 'modern dress (Custom)'}
+                      onChange={e => setFormData({ ...formData, dress_type: e.target.value })}
+                    >
+                      {DRESS_TYPES.map(type => (
+                        <option key={type} value={type}>
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
                     <label className="form-label">Delivery Due Date *</label>
                     <input 
                       type="date"
@@ -518,7 +627,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Quoted Price ($) *</label>
+                    <label className="form-label">Quoted Price (LKR) *</label>
                     <input 
                       type="number"
                       step="0.01"
@@ -537,9 +646,24 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       onChange={e => setFormData({ ...formData, payment_status: e.target.value })}
                     >
                       <option value="unpaid">Unpaid</option>
+                      <option value="partially_paid">Partially Paid</option>
                       <option value="paid">Paid</option>
                     </select>
                   </div>
+                  {formData.payment_status === 'partially_paid' && (
+                    <div className="form-group">
+                      <label className="form-label">Amount Paid (LKR) *</label>
+                      <input 
+                        type="number"
+                        step="0.01"
+                        className="form-input"
+                        required
+                        value={formData.amount_paid}
+                        onChange={e => setFormData({ ...formData, amount_paid: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  )}
                   {editingOrder && (
                     <div className="form-group" style={{ gridColumn: 'span 2' }}>
                       <label className="form-label">Current Progress Status</label>
@@ -612,17 +736,95 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         </div>
       )}
 
+      {/* Customer Details Modal */}
+      {viewingCustomer && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Customer Contact Card</h3>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setViewingCustomer(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div>
+                  <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {viewingCustomer.name}
+                  </h4>
+                  <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+                    ID: {viewingCustomer.id}
+                  </p>
+                </div>
+                
+                <div className="detail-grid" style={{ gridTemplateColumns: '1fr', gap: '0.75rem', margin: 0 }}>
+                  <div className="detail-item">
+                    <span className="detail-label">Phone Number</span>
+                    <span className="detail-val" style={{ fontSize: '0.95rem' }}>
+                      <strong>{viewingCustomer.contact}</strong>
+                    </span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Email Address</span>
+                    <span className="detail-val" style={{ fontSize: '0.95rem' }}>
+                      {viewingCustomer.email || '—'}
+                    </span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Address</span>
+                    <span className="detail-val" style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                      {viewingCustomer.address || (() => {
+                        const addressMap = {
+                          'c-1': '456 Silk Road, East Wing',
+                          'c-2': 'Enterprise Deck 1, Cargo Bay 2',
+                          'c-3': '789 Witchwood Grove',
+                          'c-4': 'Tardis Console Room, London',
+                          'c-5': '1007 Mountain Drive, Wayne Manor'
+                        };
+                        return addressMap[viewingCustomer.id] || '123 Custom Fitting Ave, Block B';
+                      })()}
+                    </span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Stitching Preferences</span>
+                    <span className="detail-val" style={{ fontStyle: 'italic', fontSize: '0.875rem' }}>
+                      "{viewingCustomer.preferences || 'No style preferences recorded'}"
+                    </span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Account Notes</span>
+                    <span className="detail-val" style={{ fontSize: '0.875rem' }}>
+                      {viewingCustomer.notes || 'No general notes'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setViewingCustomer(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Share / Receipt Options Modal */}
       {showShareModal && newlyBookedOrder && (() => {
         const customer = customers.find(c => c.id === newlyBookedOrder.customer_id) || { name: 'Valued Customer', contact: '' };
         const cleanPhone = (customer.contact || '').replace(/[^0-9]/g, '');
+        const paymentLabel = newlyBookedOrder.payment_status === 'paid' 
+          ? 'Paid' 
+          : newlyBookedOrder.payment_status === 'partially_paid'
+          ? `Partially Paid (Paid: Rs. ${Number(newlyBookedOrder.amount_paid || 0).toFixed(2)}, Bal: Rs. ${Number(newlyBookedOrder.amount - (newlyBookedOrder.amount_paid || 0)).toFixed(2)})`
+          : `Unpaid (Bal: Rs. ${Number(newlyBookedOrder.amount).toFixed(2)})`;
+
         const messageText = `Dear ${customer.name}, your tailor booking is confirmed!
 Order No: ${newlyBookedOrder.order_no}
-Service: ${newlyBookedOrder.service_type}
-Price: $${Number(newlyBookedOrder.amount).toFixed(2)} (${newlyBookedOrder.payment_status === 'paid' ? 'Paid' : 'Unpaid'})
+Service: ${newlyBookedOrder.service_type} (${newlyBookedOrder.dress_type || 'modern dress (Custom)'})
+Price: Rs. ${Number(newlyBookedOrder.amount).toFixed(2)} [${paymentLabel}]
 Delivery Due: ${newlyBookedOrder.delivery_date}
 Notes: ${newlyBookedOrder.note || '—'}
 Thank you for choosing JB Groups Tailoring Shop!`;
+
 
         const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
 
@@ -685,6 +887,10 @@ Thank you for choosing JB Groups Tailoring Shop!`;
                     <span class="value">${newlyBookedOrder.service_type}</span>
                   </div>
                   <div class="info-row">
+                    <span class="label">Dress Type:</span>
+                    <span class="value" style="text-transform: capitalize;">${newlyBookedOrder.dress_type || 'modern dress (Custom)'}</span>
+                  </div>
+                  <div class="info-row">
                     <span class="label">Fabric / Notes:</span>
                     <span class="value" style="text-align: right; max-width: 220px; word-break: break-all;">
                       ${newlyBookedOrder.note || 'None'}
@@ -692,14 +898,41 @@ Thank you for choosing JB Groups Tailoring Shop!`;
                   </div>
                   <div class="info-row">
                     <span class="label">Payment status:</span>
-                    <span class="value">${newlyBookedOrder.payment_status.toUpperCase()}</span>
+                    <span class="value" style="text-transform: capitalize;">
+                      ${newlyBookedOrder.payment_status === 'partially_paid' ? 'Partially Paid' : newlyBookedOrder.payment_status}
+                    </span>
                   </div>
+                  {newlyBookedOrder.payment_status === 'partially_paid' && (
+                    <>
+                      <div class="info-row">
+                        <span class="label">Amount Paid:</span>
+                        <span class="value">Rs. ${Number(newlyBookedOrder.amount_paid || 0).toFixed(2)}</span>
+                      </div>
+                      <div class="info-row">
+                        <span class="label">Balance Due:</span>
+                        <span class="value" style="color: #b45309; font-weight: bold;">
+                          Rs. ${Number(newlyBookedOrder.amount - (newlyBookedOrder.amount_paid || 0)).toFixed(2)}
+                        </span>
+                      </div>
+
+                    </>
+                  )}
+                  {newlyBookedOrder.payment_status === 'unpaid' && (
+                    <div class="info-row">
+                      <span class="label">Balance Due:</span>
+                      <span class="value" style="color: #ef4444; font-weight: bold;">
+                        Rs. ${Number(newlyBookedOrder.amount).toFixed(2)}
+                      </span>
+
+                    </div>
+                  )}
                   
                   <div class="divider"></div>
                   
                   <div class="info-row total">
                     <span class="label">TOTAL PRICE:</span>
-                    <span class="value">$${Number(newlyBookedOrder.amount).toFixed(2)}</span>
+                    <span class="value">Rs. ${Number(newlyBookedOrder.amount).toFixed(2)}</span>
+
                   </div>
                   
                   <div class="footer-msg">

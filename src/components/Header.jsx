@@ -1,6 +1,6 @@
 import React from 'react';
 import { db } from '../lib/db';
-import { User, ShieldAlert, Sparkles } from 'lucide-react';
+import { User, ShieldAlert, Sparkles, Download } from 'lucide-react';
 
 export default function Header({ activeRole, onRoleChange, currentSection }) {
   const getRoleBadge = (role) => {
@@ -85,6 +85,27 @@ export default function Header({ activeRole, onRoleChange, currentSection }) {
         >
           Reset DB
         </button>
+
+        {/* Download Backup Button (Visible to Manager, Boss, Owner) */}
+        {activeRole !== 'officer' && (
+          <button 
+            className="btn btn-secondary btn-sm"
+            onClick={() => db.downloadBackup()}
+            title="Download full database snapshot as a ZIP file"
+            style={{ 
+              padding: '0.375rem 0.625rem', 
+              border: '1px solid #cbd5e1', 
+              fontSize: '0.75rem', 
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem'
+            }}
+          >
+            <Download size={12} />
+            Backup DB
+          </button>
+        )}
 
         {/* User profile indicator */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
