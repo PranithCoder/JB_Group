@@ -38,34 +38,133 @@ const DEFAULT_USERS = [
 ];
 
 const DEFAULT_CUSTOMERS = [
-  { id: 'c-1', name: 'Eleanor Vance', contact: '+1 (555) 019-2834', email: 'eleanor.v@mail.com', preferences: 'Stitching - Silk Dress, Prefers loose fit, high neckline', notes: 'Frequent customer for formal wear.', serviceHistoryCount: 4, status: 'Active' },
-  { id: 'c-2', name: 'Jonathan Archer', contact: '+1 (555) 014-9922', email: 'j.archer@enterprise.org', preferences: 'Alteration - Wool Suits, Waist adjustment -0.5 inch', notes: 'Prefers express delivery.', serviceHistoryCount: 8, status: 'Active' },
-  { id: 'c-3', name: 'Seraphina Pekkala', contact: '+1 (555) 017-8811', email: 'seraphina@witch.net', preferences: 'Stitching - Custom Cloak, Lightweight fabrics, long hem', notes: 'Prefers cotton-linen blends.', serviceHistoryCount: 3, status: 'Active' },
-  { id: 'c-4', name: 'Clara Oswald', contact: '+1 (555) 012-3344', email: 'clara.oswald@tardis.co', preferences: 'Alteration - Jackets, Sleeve shortening', notes: 'Paid on time always.', serviceHistoryCount: 6, status: 'Active' },
-  { id: 'c-5', name: 'Bruce Wayne', contact: '+1 (555) 019-9999', email: 'bruce@waynecorp.com', preferences: 'Stitching - Premium Black Suit, Heavy-duty lining, custom pockets', notes: 'Extremely high value client. Demands total discretion.', serviceHistoryCount: 12, status: 'Active' }
+  { id: 'c-1', name: 'Eleanor Vance', contact: '+1 (555) 019-2834', email: 'eleanor.v@mail.com', preferences: 'Stitching - Silk Dress, Prefers loose fit, high neckline', notes: 'Frequent customer for formal wear.', serviceHistoryCount: 4, status: 'Active', referralSource: 'Social Media', referralDetails: 'Instagram' },
+  { id: 'c-2', name: 'Jonathan Archer', contact: '+1 (555) 014-9922', email: 'j.archer@enterprise.org', preferences: 'Alteration - Wool Suits, Waist adjustment -0.5 inch', notes: 'Prefers express delivery.', serviceHistoryCount: 8, status: 'Active', referralSource: 'In-Person Visit', referralDetails: 'Walk-in / Signboard' },
+  { id: 'c-3', name: 'Seraphina Pekkala', contact: '+1 (555) 017-8811', email: 'seraphina@witch.net', preferences: 'Stitching - Custom Cloak, Lightweight fabrics, long hem', notes: 'Prefers cotton-linen blends.', serviceHistoryCount: 3, status: 'Active', referralSource: 'Customer Referral', referralDetails: 'Eleanor Vance' },
+  { id: 'c-4', name: 'Clara Oswald', contact: '+1 (555) 012-3344', email: 'clara.oswald@tardis.co', preferences: 'Alteration - Jackets, Sleeve shortening', notes: 'Paid on time always.', serviceHistoryCount: 6, status: 'Active', referralSource: 'Social Media', referralDetails: 'Facebook' },
+  { id: 'c-5', name: 'Bruce Wayne', contact: '+1 (555) 019-9999', email: 'bruce@waynecorp.com', preferences: 'Stitching - Premium Black Suit, Heavy-duty lining, custom pockets', notes: 'Extremely high value client. Demands total discretion.', serviceHistoryCount: 12, status: 'Active', referralSource: 'Other', referralDetails: 'Secret invitation' }
 ];
 
-// Helper to get relative dates to current local time (2026-06-01)
+export const getTodayDateString = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+export const TODAY_DATE = getTodayDateString();
+
+// Helper to get relative dates to current local time (TODAY_DATE)
 const getDateOffset = (days) => {
-  const d = new Date('2026-06-01');
+  const d = new Date(TODAY_DATE);
   d.setDate(d.getDate() + days);
   return d.toISOString().split('T')[0];
 };
 
 const DEFAULT_ORDERS = [
-  { id: 'ord-101', customer_id: 'c-1', order_no: 'JB-2026-101', order_date: getDateOffset(-5), delivery_date: getDateOffset(-1), completed_date: getDateOffset(-1), service_type: 'Stitching', dress_type: 'frock', note: 'Silk Evening Gown with emerald lace trim', status: 'completed', amount: 350.00, payment_status: 'paid', assigned_staff_id: 'stf-1' },
-  { id: 'ord-102', customer_id: 'c-2', order_no: 'JB-2026-102', order_date: getDateOffset(-4), delivery_date: getDateOffset(1), service_type: 'Alteration', dress_type: 'alteration', note: 'Three wool trousers waist and cuff adjustments', status: 'in-progress', amount: 90.00, payment_status: 'paid', assigned_staff_id: 'stf-2' },
+  { id: 'ord-101', customer_id: 'c-1', order_no: 'JB-2026-101', bill_no: 'B-8821', order_date: getDateOffset(-5), delivery_date: getDateOffset(-1), completed_date: getDateOffset(-1), service_type: 'Stitching', dress_type: 'frock', note: 'Silk Evening Gown with emerald lace trim', status: 'completed', amount: 350.00, payment_status: 'paid', assigned_staff_id: 'stf-1' },
+  { id: 'ord-102', customer_id: 'c-2', order_no: 'JB-2026-102', bill_no: 'B-8822', order_date: getDateOffset(-4), delivery_date: getDateOffset(1), service_type: 'Alteration', dress_type: 'alteration', note: 'Three wool trousers waist and cuff adjustments', status: 'in-progress', amount: 90.00, payment_status: 'paid', assigned_staff_id: 'stf-2' },
   { id: 'ord-103', customer_id: 'c-3', order_no: 'JB-2026-103', order_date: getDateOffset(-3), delivery_date: getDateOffset(2), service_type: 'Stitching', dress_type: 'shirt', note: 'Linen casual jacket, wooden buttons', status: 'in-progress', amount: 180.00, payment_status: 'unpaid', assigned_staff_id: 'stf-3' },
-  { id: 'ord-104', customer_id: 'c-4', order_no: 'JB-2026-104', order_date: getDateOffset(-6), delivery_date: getDateOffset(-2), completed_date: getDateOffset(-2), service_type: 'Alteration', dress_type: 'alteration', note: 'Sleeve adjustments on 2 denim jackets', status: 'completed', amount: 60.00, payment_status: 'paid', assigned_staff_id: 'stf-2' },
+  { id: 'ord-104', customer_id: 'c-4', order_no: 'JB-2026-104', bill_no: 'B-8824', order_date: getDateOffset(-6), delivery_date: getDateOffset(-2), completed_date: getDateOffset(-2), service_type: 'Alteration', dress_type: 'alteration', note: 'Sleeve adjustments on 2 denim jackets', status: 'completed', amount: 60.00, payment_status: 'paid', assigned_staff_id: 'stf-2' },
   { id: 'ord-105', customer_id: 'c-5', order_no: 'JB-2026-105', order_date: getDateOffset(-1), delivery_date: getDateOffset(0), service_type: 'Stitching', dress_type: 'court suite', note: 'Bespoke Tuxedo with bulletproof fabric lining simulation', status: 'pending', amount: 2400.00, payment_status: 'unpaid', assigned_staff_id: 'stf-1' },
-  { id: 'ord-106', customer_id: 'c-1', order_no: 'JB-2026-106', order_date: getDateOffset(-10), delivery_date: getDateOffset(-3), completed_date: getDateOffset(-3), service_type: 'Stitching', dress_type: 'frock', note: 'Cotton summer dress, floral print', status: 'completed', amount: 150.00, payment_status: 'paid', assigned_staff_id: 'stf-3' }
+  { id: 'ord-106', customer_id: 'c-1', order_no: 'JB-2026-106', bill_no: 'B-8799', order_date: getDateOffset(-10), delivery_date: getDateOffset(-3), completed_date: getDateOffset(-3), service_type: 'Stitching', dress_type: 'frock', note: 'Cotton summer dress, floral print', status: 'completed', amount: 150.00, payment_status: 'paid', assigned_staff_id: 'stf-3' }
 ];
 
 const DEFAULT_STAFF = [
-  { id: 'stf-1', name: 'Master Tailor Ali', contact: '+1 (555) 018-4422', role: 'Master Tailor', salary: 1200.00, join_date: '2024-01-15', leaves: { sick: 10, casual: 12, vacation: 15 } },
-  { id: 'stf-2', name: 'Sarah Chen', contact: '+1 (555) 016-7733', role: 'Seamstress', salary: 900.00, join_date: '2025-03-10', leaves: { sick: 8, casual: 11, vacation: 14 } },
-  { id: 'stf-3', name: 'David Miller', contact: '+1 (555) 015-1100', role: 'Apprentice Stitcher', salary: 650.00, join_date: '2025-11-01', leaves: { sick: 12, casual: 12, vacation: 10 } },
-  { id: 'stf-4', name: 'Zara Gomez', contact: '+1 (555) 013-6622', role: 'Store Assistant', salary: 750.00, join_date: '2024-06-20', leaves: { sick: 9, casual: 10, vacation: 12 } }
+  {
+    id: 'stf-1',
+    name: 'Master Tailor Ali',
+    contact: '+1 (555) 018-4422',
+    role: 'Master Tailor',
+    salary: 1200.00,
+    join_date: '2024-01-15',
+    dob: '1985-05-12',
+    religion: 'Islam',
+    gender: 'Male',
+    marital_status: 'Married',
+    email: 'ali.tailor@jbgroup.com',
+    permanent_address: '12 Main Street, Colombo 03',
+    emergency_name: 'Fathima Ali',
+    emergency_address: '12 Main Street, Colombo 03',
+    emergency_phone: '+1 (555) 018-4423',
+    emergency_relation: 'Spouse',
+    bank_acc_holder: 'M. T. Ali',
+    bank_name: 'Bank of Ceylon',
+    bank_acc_number: '7832948293',
+    bank_branch: 'Kollupitiya',
+    bank_passbook_link: 'https://drive.google.com/file/d/1ali_passbook/view',
+    leaves: { sick: 10, casual: 12, vacation: 15 }
+  },
+  {
+    id: 'stf-2',
+    name: 'Sarah Chen',
+    contact: '+1 (555) 016-7733',
+    role: 'Seamstress',
+    salary: 900.00,
+    join_date: '2025-03-10',
+    dob: '1992-08-24',
+    religion: 'Buddhism',
+    gender: 'Female',
+    marital_status: 'Single',
+    email: 'sarah.c@jbgroup.com',
+    permanent_address: '45/1 Galle Road, Dehiwala',
+    emergency_name: 'Robert Chen',
+    emergency_address: '45/1 Galle Road, Dehiwala',
+    emergency_phone: '+1 (555) 016-7734',
+    emergency_relation: 'Father',
+    bank_acc_holder: 'Sarah Chen',
+    bank_name: 'Commercial Bank',
+    bank_acc_number: '1098273948',
+    bank_branch: 'Dehiwala',
+    bank_passbook_link: 'https://drive.google.com/file/d/1sarah_passbook/view',
+    leaves: { sick: 8, casual: 11, vacation: 14 }
+  },
+  {
+    id: 'stf-3',
+    name: 'David Miller',
+    contact: '+1 (555) 015-1100',
+    role: 'Apprentice Stitcher',
+    salary: 650.00,
+    join_date: '2025-11-01',
+    dob: '1998-11-05',
+    religion: 'Christianity',
+    gender: 'Male',
+    marital_status: 'Single',
+    email: 'david.m@jbgroup.com',
+    permanent_address: '88 Negombo Road, Wattala',
+    emergency_name: 'Mary Miller',
+    emergency_address: '88 Negombo Road, Wattala',
+    emergency_phone: '+1 (555) 015-1101',
+    emergency_relation: 'Mother',
+    bank_acc_holder: 'David Miller',
+    bank_name: 'Hatton National Bank',
+    bank_acc_number: '48392019283',
+    bank_branch: 'Wattala',
+    bank_passbook_link: 'https://drive.google.com/file/d/1david_passbook/view',
+    leaves: { sick: 12, casual: 12, vacation: 10 }
+  },
+  {
+    id: 'stf-4',
+    name: 'Zara Gomez',
+    contact: '+1 (555) 013-6622',
+    role: 'Store Assistant',
+    salary: 750.00,
+    join_date: '2024-06-20',
+    dob: '1995-02-17',
+    religion: 'Catholic',
+    gender: 'Female',
+    marital_status: 'Married',
+    email: 'zara.g@jbgroup.com',
+    permanent_address: '15 Havelock Road, Colombo 05',
+    emergency_name: 'Carlos Gomez',
+    emergency_address: '15 Havelock Road, Colombo 05',
+    emergency_phone: '+1 (555) 013-6623',
+    emergency_relation: 'Spouse',
+    bank_acc_holder: 'Zara Gomez',
+    bank_name: 'Sampath Bank',
+    bank_acc_number: '92847293849',
+    bank_branch: 'Havelock',
+    bank_passbook_link: 'https://drive.google.com/file/d/1zara_passbook/view',
+    leaves: { sick: 9, casual: 10, vacation: 12 }
+  }
 ];
 
 // Seed attendance for the past week: May 25 to May 31, 2026
@@ -177,9 +276,19 @@ const DEFAULT_RETAIL_SALES = [
   { id: 'rs-102', customer_id: 'c-2', product_id: 'ri-4', qty: 2, unit_price: 1650.00, total_price: 3300.00, sale_date: getDateOffset(-1), payment_status: 'paid' }
 ];
 
+const DEFAULT_VISITS = [
+  { id: 'vst-1', visitorName: 'Amelia Watson', reason: 'Fitting & Alteration', date: TODAY_DATE, time: '11:15', notes: 'Needed saree blouse fitting adjusted.' },
+  { id: 'vst-2', visitorName: 'Bruce Wayne', reason: 'Payment & Billing', date: TODAY_DATE, time: '14:20', notes: 'Paid balance for tuxedo order.' }
+];
+
+const DEFAULT_CALLS = [
+  { id: 'cal-1', callerName: 'Clara Oswald', phoneNumber: '+1 (555) 012-3344', reason: 'Order Status Inquiry', note: 'Asked when her denim jacket would be ready.', date: TODAY_DATE, time: '09:45' },
+  { id: 'cal-2', callerName: 'Oliver Queen', phoneNumber: '+1 (555) 018-7766', reason: 'Price Quotation Request', note: 'Inquired about custom leather suit price.', date: TODAY_DATE, time: '10:10' }
+];
+
 const DEFAULT_AUDIT_LOGS = [
-  { id: 'log-1', timestamp: '2026-06-01 14:32:10', user: 'Alina Officer', action: 'Modified Order JB-2026-105', details: 'Quoted amount updated from Rs. 2,400.00 to Rs. 2,300.00 (Sent to Manager approval queue)', status: 'Pending Approval' },
-  { id: 'log-2', timestamp: '2026-06-01 11:15:04', user: 'Marcus Manager', action: 'Approved Complaint Ticket comp-2', details: 'Status set to Resolved; notes added: "Re-hemmed with heavy-duty fibers"', status: 'Executed' },
+  { id: 'log-1', timestamp: '2026-06-03 14:32:10', user: 'Alina Officer', action: 'Modified Order JB-2026-105', details: 'Quoted amount updated from Rs. 2,400.00 to Rs. 2,300.00 (Sent to Manager approval queue)', status: 'Pending Approval' },
+  { id: 'log-2', timestamp: '2026-06-03 11:15:04', user: 'Marcus Manager', action: 'Approved Complaint Ticket comp-2', details: 'Status set to Resolved; notes added: "Re-hemmed with heavy-duty fibers"', status: 'Executed' },
   { id: 'log-3', timestamp: '2026-05-31 16:45:00', user: 'Alina Officer', action: 'Created Customer Bruce Wayne', details: 'Enrolled Bruce Wayne (+1 555-019-9999)', status: 'Executed' },
   { id: 'log-4', timestamp: '2026-05-31 10:20:11', user: 'Marcus Manager', action: 'Recorded Purchase pur-1', details: 'Purchased 30m Egyptian Cotton (Rs. 375.00 total expense)', status: 'Executed' },
   { id: 'log-5', timestamp: '2026-05-30 09:00:22', user: 'Alina Officer', action: 'Deleted Customer c-4', details: 'Attempted to delete Clara Oswald. Action blocked; redirected to approval queue', status: 'Blocked' }
@@ -230,6 +339,8 @@ const initLocalStorage = () => {
   checkAndSeed('jb_approvals', DEFAULT_APPROVALS);
   checkAndSeed('jb_retail_inventory', DEFAULT_RETAIL_INVENTORY);
   checkAndSeed('jb_retail_sales', DEFAULT_RETAIL_SALES);
+  checkAndSeed('jb_visits', DEFAULT_VISITS);
+  checkAndSeed('jb_calls', DEFAULT_CALLS);
   checkAndSeed('jb_audit_logs', DEFAULT_AUDIT_LOGS);
 
 
@@ -278,6 +389,8 @@ const collectionsToSync = [
   { fsKey: 'approvals', lsKey: 'jb_approvals' },
   { fsKey: 'retail_inventory', lsKey: 'jb_retail_inventory' },
   { fsKey: 'retail_sales', lsKey: 'jb_retail_sales' },
+  { fsKey: 'visits', lsKey: 'jb_visits' },
+  { fsKey: 'calls', lsKey: 'jb_calls' },
   { fsKey: 'audit_logs', lsKey: 'jb_audit_logs' }
 ];
 
@@ -414,6 +527,78 @@ export const db = {
   },
 
   // ----------------------------------------------------
+  // Branch Visits Module
+  // ----------------------------------------------------
+  getVisits() {
+    return safeGetLocalStorage('jb_visits', []);
+  },
+
+  saveVisit(visit) {
+    const list = this.getVisits();
+    let savedVisit;
+    if (visit.id) {
+      const index = list.findIndex(v => v.id === visit.id);
+      if (index !== -1) {
+        list[index] = { ...list[index], ...visit };
+        savedVisit = list[index];
+      }
+    } else {
+      visit.id = 'vst-' + Date.now();
+      list.unshift(visit);
+      savedVisit = visit;
+    }
+    localStorage.setItem('jb_visits', JSON.stringify(list));
+    if (savedVisit) syncToFirestore('visits', savedVisit);
+    window.dispatchEvent(new Event('jb_database_updated'));
+    return savedVisit || visit;
+  },
+
+  deleteVisit(id) {
+    let list = this.getVisits();
+    list = list.filter(v => v.id !== id);
+    localStorage.setItem('jb_visits', JSON.stringify(list));
+    deleteFromFirestore('visits', id);
+    window.dispatchEvent(new Event('jb_database_updated'));
+    return { status: 'success' };
+  },
+
+  // ----------------------------------------------------
+  // Call Logs Module
+  // ----------------------------------------------------
+  getCalls() {
+    return safeGetLocalStorage('jb_calls', []);
+  },
+
+  saveCall(call) {
+    const list = this.getCalls();
+    let savedCall;
+    if (call.id) {
+      const index = list.findIndex(c => c.id === call.id);
+      if (index !== -1) {
+        list[index] = { ...list[index], ...call };
+        savedCall = list[index];
+      }
+    } else {
+      call.id = 'cal-' + Date.now();
+      list.unshift(call);
+      savedCall = call;
+    }
+    localStorage.setItem('jb_calls', JSON.stringify(list));
+    if (savedCall) syncToFirestore('calls', savedCall);
+    window.dispatchEvent(new Event('jb_database_updated'));
+    return savedCall || call;
+  },
+
+  deleteCall(id) {
+    let list = this.getCalls();
+    list = list.filter(c => c.id !== id);
+    localStorage.setItem('jb_calls', JSON.stringify(list));
+    deleteFromFirestore('calls', id);
+    window.dispatchEvent(new Event('jb_database_updated'));
+    return { status: 'success' };
+  },
+
+  // ----------------------------------------------------
   // Orders Module
   // ----------------------------------------------------
   getOrders() {
@@ -436,7 +621,7 @@ export const db = {
         amountPaid = ord.payment_status === 'paid' ? ord.amount : 0;
       }
       let completedDate = ord.completed_date;
-      if (ord.status === 'completed' && !completedDate) {
+      if ((ord.status === 'completed' || ord.status === 'delivered') && !completedDate) {
         completedDate = ord.delivery_date || ord.order_date;
       }
       return {
@@ -451,11 +636,28 @@ export const db = {
   },
 
   saveOrder(order) {
+    if (order.status === 'delivered' && order.payment_status !== 'paid') {
+      const balance = order.amount - (order.amount_paid || 0);
+      throw new Error(`Cannot deliver order! Outstanding balance of Rs. ${balance.toFixed(2)} must be fully paid first.`);
+    }
     const role = this.getActiveRole();
     const list = safeGetLocalStorage('jb_orders', []);
 
     if (order.id) {
       const original = list.find(o => o.id === order.id);
+      if (original && original.status !== order.status) {
+        const cur = original.status;
+        const nxt = order.status;
+        if (cur === 'pending' && nxt !== 'in-progress') {
+          throw new Error('Invalid transition! Pending orders can only move to In-Progress.');
+        } else if (cur === 'in-progress' && nxt !== 'completed') {
+          throw new Error('Invalid transition! In-Progress orders can only move to Completed.');
+        } else if (cur === 'completed' && nxt !== 'delivered') {
+          throw new Error('Invalid transition! Completed orders can only move to Delivered.');
+        } else if (cur === 'delivered') {
+          throw new Error('Invalid transition! Delivered is the final stage.');
+        }
+      }
       
       // Critical change validation for Officers
       if (role === 'officer' && original && 
@@ -487,13 +689,15 @@ export const db = {
       const index = list.findIndex(o => o.id === order.id);
       if (index !== -1) {
         let updatedOrder = { ...order };
-        if (order.status === 'completed' && original.status !== 'completed') {
+        if ((order.status === 'completed' || order.status === 'delivered') && 
+            (original.status !== 'completed' && original.status !== 'delivered')) {
           updatedOrder.completed_date = getDateOffset(0);
         }
         list[index] = { ...list[index], ...updatedOrder };
         syncToFirestore('orders', list[index]);
         // If order gets completed, automatically decrement some stock for demo
-        if (order.status === 'completed' && original.status !== 'completed') {
+        if ((order.status === 'completed' || order.status === 'delivered') && 
+            (original.status !== 'completed' && original.status !== 'delivered')) {
           this.decrementStockForOrder(order);
         }
       }
@@ -502,7 +706,7 @@ export const db = {
       order.id = 'ord-' + Date.now();
       order.order_no = 'JB-2026-' + (list.length + 101);
       order.order_date = getDateOffset(0);
-      if (order.status === 'completed') {
+      if (order.status === 'completed' || order.status === 'delivered') {
         order.completed_date = getDateOffset(0);
       }
       list.unshift(order);

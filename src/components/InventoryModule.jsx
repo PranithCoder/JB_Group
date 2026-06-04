@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { db } from '../lib/db';
+import { db, TODAY_DATE } from '../lib/db';
 import { Boxes, Plus, Trash2, Calendar, FileText, Image, Check, X, RefreshCw } from 'lucide-react';
 
 export default function InventoryModule({ activeRole, triggerUpdate }) {
@@ -24,7 +24,7 @@ export default function InventoryModule({ activeRole, triggerUpdate }) {
     item_id: '',
     quantity: '',
     total_cost: '',
-    date: new Date('2026-06-01').toISOString().split('T')[0],
+    date: TODAY_DATE,
     receipt_url: ''
   });
 
@@ -89,7 +89,7 @@ export default function InventoryModule({ activeRole, triggerUpdate }) {
       item_id: inventory[0]?.id || '',
       quantity: '',
       total_cost: '',
-      date: new Date('2026-06-01').toISOString().split('T')[0],
+      date: TODAY_DATE,
       receipt_url: ''
     });
     setActiveTab('stock');

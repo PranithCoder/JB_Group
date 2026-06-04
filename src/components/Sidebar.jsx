@@ -9,7 +9,9 @@ import {
   UsersRound, 
   ShieldCheck, 
   Scissors,
-  ShoppingCart
+  ShoppingCart,
+  MapPin,
+  Phone
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -46,6 +48,18 @@ export default function Sidebar({
       label: 'Retail & Accessories', 
       icon: ShoppingCart, 
       roles: ['officer', 'manager', 'boss', 'super_admin']
+    },
+    { 
+      id: 'visits', 
+      label: 'Branch Visits', 
+      icon: MapPin, 
+      roles: ['officer', 'manager', 'boss', 'super_admin'] 
+    },
+    { 
+      id: 'calls', 
+      label: 'Call Logs', 
+      icon: Phone, 
+      roles: ['officer', 'manager', 'boss', 'super_admin'] 
     },
 
     { 

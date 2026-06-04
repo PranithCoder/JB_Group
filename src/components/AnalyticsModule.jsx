@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { db, DRESS_TYPES } from '../lib/db';
+import { db, DRESS_TYPES, TODAY_DATE } from '../lib/db';
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -22,15 +22,17 @@ import {
   Users, 
   AlertTriangle, 
   Package, 
-  CalendarClock 
+  CalendarClock,
+  MapPin,
+  Phone
 } from 'lucide-react';
 
 export default function AnalyticsModule({ activeRole, setCurrentSection }) {
   const [cashflowTimeframe, setCashflowTimeframe] = useState('monthly');
   const [demandTimeframe, setDemandTimeframe] = useState('weekly');
   const [completedFilterMode, setCompletedFilterMode] = useState('today');
-  const [completedFromDate, setCompletedFromDate] = useState('2026-06-01');
-  const [completedToDate, setCompletedToDate] = useState('2026-06-01');
+  const [completedFromDate, setCompletedFromDate] = useState(TODAY_DATE);
+  const [completedToDate, setCompletedToDate] = useState(TODAY_DATE);
 
   const orders = db.getOrders();
   const customers = db.getCustomers();
@@ -39,6 +41,56 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
   const purchases = db.getPurchases();
   const attendance = db.getAttendance();
   const retailSales = db.getRetailSales();
+  const visits = db.getVisits();
+  const calls = db.getCalls();
+
+  const todayVisitsCount = visits.filter(v => v.date === TODAY_DATE).length;
+  const todayCallsCount = calls.filter(c => c.date === TODAY_DATE).length;
+
+  // Acquisition channels analysis
+  const getReferralStats = () => {
+    const counts = {
+      'Social Media': 0,
+      'In-Person Visit': 0,
+      'Customer Referral': 0,
+      'Other': 0,
+      'Not Specified': 0
+    };
+    customers.forEach(c => {
+      const source = c.referralSource || 'Not Specified';
+      if (counts[source] !== undefined) {
+        counts[source]++;
+      } else {
+        counts['Other']++;
+      }
+    });
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  };
+  const referralStats = getReferralStats();
+
+  const getTopReferrers = () => {
+    const counts = {};
+    customers.forEach(c => {
+      if (c.referralSource === 'Customer Referral' && c.referralDetails && !c.referralDetails.startsWith('Other:')) {
+        const referrer = c.referralDetails;
+        counts[referrer] = (counts[referrer] || 0) + 1;
+      }
+    });
+    return Object.entries(counts)
+      .map(([name, count]) => {
+        const refCust = customers.find(cust => cust.name === name);
+        return {
+          name,
+          count,
+          contact: refCust ? refCust.contact : 'External Referrer'
+        };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  };
+  const topReferrers = getTopReferrers();
 
 
   // Helper to determine if a date is within a timeframe
@@ -46,13 +98,13 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
     if (timeframe === 'all') return true;
     if (!dateStr) return false;
     
-    const refDate = new Date('2026-06-01');
+    const refDate = new Date(TODAY_DATE);
     const itemDate = new Date(dateStr);
     const diffTime = refDate - itemDate;
     const diffDays = diffTime / (1000 * 60 * 60 * 24);
     
     if (timeframe === 'daily') {
-      return dateStr === '2026-06-01';
+      return dateStr === TODAY_DATE;
     } else if (timeframe === 'weekly') {
       return diffDays >= 0 && diffDays <= 7;
     } else if (timeframe === 'monthly') {
@@ -89,7 +141,10 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
 
 
   const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'in-progress').length;
-  const completedOrders = orders.filter(o => o.status === 'completed').length;
+  const completedOrders = orders.filter(o => 
+    (o.status === 'completed' || o.status === 'delivered') && 
+    o.completed_date === TODAY_DATE
+  ).length;
   const activeCustomers = customers.filter(c => c.status === 'Active').length;
   const lowStockCount = inventory.filter(i => i.stock_on_hand < i.reorder_threshold).length;
   const openComplaintsCount = complaints.filter(c => c.status !== 'Resolved').length;
@@ -107,7 +162,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
   // Let's generate a list of dates from May 23 to Jun 1
   const salesByDate = {};
   for (let i = -9; i <= 0; i++) {
-    const d = new Date('2026-06-01');
+    const d = new Date(TODAY_DATE);
     d.setDate(d.getDate() + i);
     const dateStr = d.toISOString().split('T')[0];
     salesByDate[dateStr] = 0;
@@ -134,7 +189,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
       { name: 'Current (Jun 01)', start: 0, end: 0 }
     ];
 
-    const refDate = new Date('2026-06-01');
+    const refDate = new Date(TODAY_DATE);
 
     return weeks.map(w => {
       let cashInVal = 0;
@@ -197,7 +252,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
 
   // Dress Type Movement Statistics
   const getDressTypeStats = (timeframe) => {
-    const refDate = new Date('2026-06-01');
+    const refDate = new Date(TODAY_DATE);
     const counts = {};
     
     orders.forEach(o => {
@@ -205,7 +260,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
       let matches = false;
       
       if (timeframe === 'daily') {
-        matches = o.order_date === '2026-06-01';
+        matches = o.order_date === TODAY_DATE;
       } else if (timeframe === 'weekly') {
         const diffTime = refDate - oDate;
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
@@ -240,12 +295,11 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
   });
   const serviceChartData = Object.entries(serviceStats).map(([name, count]) => ({ name, count }));
 
-  // Filter completed orders
   const filteredCompletedOrders = orders.filter(o => {
-    if (o.status !== 'completed') return false;
+    if (o.status !== 'completed' && o.status !== 'delivered') return false;
     const compDate = o.completed_date || o.delivery_date;
     if (completedFilterMode === 'today') {
-      return compDate === '2026-06-01';
+      return compDate === TODAY_DATE;
     } else {
       return compDate >= completedFromDate && compDate <= completedToDate;
     }
@@ -267,8 +321,8 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
               <button 
                 onClick={() => {
                   setCompletedFilterMode('today');
-                  setCompletedFromDate('2026-06-01');
-                  setCompletedToDate('2026-06-01');
+                  setCompletedFromDate(TODAY_DATE);
+                  setCompletedToDate(TODAY_DATE);
                 }}
                 className={`role-btn ${completedFilterMode === 'today' ? 'active' : ''}`}
                 style={{ padding: '0.25rem 0.625rem', fontSize: '0.775rem' }}
@@ -279,7 +333,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                 onClick={() => {
                   setCompletedFilterMode('custom');
                   setCompletedFromDate('2026-05-01');
-                  setCompletedToDate('2026-06-01');
+                  setCompletedToDate(TODAY_DATE);
                 }}
                 className={`role-btn ${completedFilterMode === 'custom' ? 'active' : ''}`}
                 style={{ padding: '0.25rem 0.625rem', fontSize: '0.775rem' }}
@@ -315,7 +369,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Order No</th>
+                  <th>Order / Bill No</th>
                   <th>Customer Name</th>
                   <th>Delivery Date (Completed)</th>
                   <th>Category & Dress Type</th>
@@ -333,7 +387,14 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                 ) : (
                   filteredCompletedOrders.map(o => (
                     <tr key={o.id}>
-                      <td style={{ fontWeight: 600 }}>{o.order_no}</td>
+                      <td style={{ fontWeight: 600 }}>
+                        <div>{o.order_no}</div>
+                        {o.bill_no && (
+                          <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                            Bill: {o.bill_no}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ fontWeight: 500 }}>{o.customer?.name || '—'}</td>
                       <td>{o.delivery_date}</td>
                       <td>
@@ -376,11 +437,14 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
   if (activeRole === 'officer') {
     const pendingBookings = orders.filter(o => o.status === 'pending').length;
     const inProgressBookings = orders.filter(o => o.status === 'in-progress').length;
-    const completedBookings = orders.filter(o => o.status === 'completed').length;
+    const completedBookings = orders.filter(o => 
+      (o.status === 'completed' || o.status === 'delivered') && 
+      o.completed_date === TODAY_DATE
+    ).length;
     const totalClientsCount = customers.length;
 
     const activeOrdersList = orders
-      .filter(o => o.status !== 'completed')
+      .filter(o => o.status !== 'completed' && o.status !== 'delivered')
       .sort((a, b) => new Date(a.delivery_date) - new Date(b.delivery_date))
       .slice(0, 5);
 
@@ -417,7 +481,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
             <div className="kpi-info">
               <span className="kpi-label">Completed Orders</span>
               <span className="kpi-value">{completedBookings}</span>
-              <span className="kpi-badge success">Ready for Delivery</span>
+              <span className="kpi-badge success">Stitched & Delivered</span>
             </div>
             <div className="kpi-icon-wrapper green">
               <ShoppingBag size={24} />
@@ -432,6 +496,28 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
             </div>
             <div className="kpi-icon-wrapper blue">
               <Users size={24} />
+            </div>
+          </div>
+
+          <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('visits')}>
+            <div className="kpi-info">
+              <span className="kpi-label">Today's Visits</span>
+              <span className="kpi-value">{todayVisitsCount}</span>
+              <span className="kpi-badge success">Logsheet Count</span>
+            </div>
+            <div className="kpi-icon-wrapper blue">
+              <MapPin size={24} />
+            </div>
+          </div>
+
+          <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('calls')}>
+            <div className="kpi-info">
+              <span className="kpi-label">Today's Calls</span>
+              <span className="kpi-value">{todayCallsCount}</span>
+              <span className="kpi-badge success">Logbook Count</span>
+            </div>
+            <div className="kpi-icon-wrapper blue">
+              <Phone size={24} />
             </div>
           </div>
         </div>
@@ -453,7 +539,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Order No</th>
+                      <th>Order / Bill No</th>
                       <th>Customer Name</th>
                       <th>Delivery Date</th>
                       <th>Service Type</th>
@@ -470,7 +556,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                     ) : (
                       activeOrdersList.map(o => {
                         const daysRemaining = (dueDateStr) => {
-                          const today = new Date('2026-06-01');
+                          const today = new Date(TODAY_DATE);
                           const dueDate = new Date(dueDateStr);
                           return Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
                         };
@@ -490,7 +576,14 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
 
                         return (
                           <tr key={o.id}>
-                            <td style={{ fontWeight: 600 }}>{o.order_no}</td>
+                            <td style={{ fontWeight: 600 }}>
+                              <div>{o.order_no}</div>
+                              {o.bill_no && (
+                                <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                                  Bill: {o.bill_no}
+                                </div>
+                              )}
+                            </td>
                             <td>{o.customer?.name || '—'}</td>
                             <td className={dateClass} style={{ fontWeight: dateClass ? 600 : 'normal' }}>{dateText}</td>
                             <td>{o.service_type}</td>
@@ -498,8 +591,24 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                               <select
                                 value={o.status}
                                 onChange={(e) => {
-                                  const payload = { ...o, status: e.target.value };
-                                  db.saveOrder(payload);
+                                  const newStatus = e.target.value;
+                                  let payload = { ...o, status: newStatus };
+                                  if (newStatus === 'delivered' && o.payment_status !== 'paid') {
+                                    const balance = o.amount - (o.amount_paid || 0);
+                                    const confirmPaid = window.confirm(`Customer has an outstanding balance of Rs. ${balance.toFixed(2)}.\n\nMark order as FULLY PAID and complete delivery?`);
+                                    if (confirmPaid) {
+                                      payload.payment_status = 'paid';
+                                      payload.amount_paid = o.amount;
+                                    } else {
+                                      alert("Delivery aborted. Outstanding balance must be paid first.");
+                                      return;
+                                    }
+                                  }
+                                  try {
+                                    db.saveOrder(payload);
+                                  } catch (err) {
+                                    alert(err.message);
+                                  }
                                 }}
                                 className="form-select"
                                 style={{
@@ -511,16 +620,34 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                                   border: 'none',
                                   cursor: 'pointer',
                                   backgroundColor: 
-                                    o.status === 'completed' ? 'var(--color-success-light)' : 
+                                    o.status === 'completed' || o.status === 'delivered' ? 'var(--color-success-light)' : 
                                     o.status === 'in-progress' ? 'var(--color-warning-light)' : 'var(--color-primary-light)',
                                   color: 
-                                    o.status === 'completed' ? 'var(--color-success)' : 
+                                    o.status === 'completed' || o.status === 'delivered' ? 'var(--color-success)' : 
                                     o.status === 'in-progress' ? '#b45309' : 'var(--color-primary)'
                                 }}
                               >
-                                <option value="pending">Pending</option>
-                                <option value="in-progress">In-Progress</option>
-                                <option value="completed">Completed</option>
+                                {o.status === 'pending' && (
+                                  <>
+                                    <option value="pending">Pending</option>
+                                    <option value="in-progress">In-Progress</option>
+                                  </>
+                                )}
+                                {o.status === 'in-progress' && (
+                                  <>
+                                    <option value="in-progress">In-Progress</option>
+                                    <option value="completed">Completed</option>
+                                  </>
+                                )}
+                                {o.status === 'completed' && (
+                                  <>
+                                    <option value="completed">Completed</option>
+                                    <option value="delivered">Delivered to customer</option>
+                                  </>
+                                )}
+                                {o.status === 'delivered' && (
+                                  <option value="delivered">Delivered to customer</option>
+                                )}
                               </select>
                             </td>
                           </tr>
@@ -670,6 +797,117 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
 
         </div>
 
+        {/* Marketing & Customer Acquisition Insights */}
+        <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 1fr', marginTop: '1.5rem' }}>
+          
+          {/* Customer Acquisition Channels */}
+          <div className="card">
+            <div className="card-header">
+              <h3>
+                <Users size={18} style={{ color: 'var(--color-primary)' }} />
+                Customer Acquisition Channels
+              </h3>
+            </div>
+            <div className="card-body">
+              <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                How our enrolled clients discovered JB Groups.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                {(() => {
+                  if (customers.length === 0) {
+                    return (
+                      <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                        No customer profiles enrolled yet.
+                      </div>
+                    );
+                  }
+                  const maxCount = Math.max(...referralStats.map(d => d.count), 1);
+                  return referralStats.map((d, index) => {
+                    const percentage = (d.count / maxCount) * 100;
+                    const totalPercentage = Math.round((d.count / customers.length) * 100) || 0;
+                    return (
+                      <div key={d.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem' }}>
+                          <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.775rem' }}>#{index + 1}</span>
+                            {d.name}
+                          </span>
+                          <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
+                            {d.count} ({totalPercentage}%)
+                          </span>
+                        </div>
+                        <div style={{ height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div 
+                            style={{ 
+                              height: '100%', 
+                              width: `${percentage}%`, 
+                              backgroundColor: 
+                                d.name === 'Social Media' ? 'var(--color-primary)' :
+                                d.name === 'Customer Referral' ? 'var(--color-success)' :
+                                d.name === 'In-Person Visit' ? 'var(--color-warning)' : '#94a3b8', 
+                              borderRadius: '4px',
+                              transition: 'width 0.5s ease-in-out'
+                            }} 
+                          />
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          </div>
+
+          {/* Top Word-of-Mouth Brand Advocates */}
+          <div className="card">
+            <div className="card-header">
+              <h3>
+                <TrendingUp size={18} style={{ color: 'var(--color-success)' }} />
+                Top Referring Customers
+              </h3>
+            </div>
+            <div className="card-body">
+              <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                Active clients who have referred the most new customers.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {topReferrers.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                    No customer-referred profiles logged yet.
+                  </div>
+                ) : (
+                  topReferrers.map((ref, idx) => (
+                    <div 
+                      key={ref.name} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        padding: '0.75rem 1rem', 
+                        borderRadius: '8px', 
+                        border: '1px solid var(--border-light)', 
+                        backgroundColor: idx === 0 ? 'var(--color-success-light)' : '#fafafa' 
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{ref.name}</div>
+                        <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>{ref.contact}</div>
+                      </div>
+                      <span 
+                        className={`badge ${idx === 0 ? 'success' : 'info'}`} 
+                        style={{ fontSize: '0.825rem', fontWeight: 700, padding: '0.25rem 0.625rem', borderRadius: '6px' }}
+                      >
+                        {ref.count} {ref.count === 1 ? 'Referral' : 'Referrals'}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+        </div>
+
       </div>
     );
   }
@@ -794,6 +1032,28 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
           </div>
           <div className="kpi-icon-wrapper green">
             <CalendarClock size={24} />
+          </div>
+        </div>
+
+        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('visits')}>
+          <div className="kpi-info">
+            <span className="kpi-label">Today's Visits</span>
+            <span className="kpi-value">{todayVisitsCount}</span>
+            <span className="kpi-badge success">Logsheet Count</span>
+          </div>
+          <div className="kpi-icon-wrapper blue">
+            <MapPin size={24} />
+          </div>
+        </div>
+
+        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('calls')}>
+          <div className="kpi-info">
+            <span className="kpi-label">Today's Calls</span>
+            <span className="kpi-value">{todayCallsCount}</span>
+            <span className="kpi-badge success">Logbook Count</span>
+          </div>
+          <div className="kpi-icon-wrapper blue">
+            <Phone size={24} />
           </div>
         </div>
       </div>
@@ -975,6 +1235,117 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                 <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} name="Order Count" />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Marketing & Customer Acquisition Insights */}
+      <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 1fr', marginTop: '1.5rem' }}>
+        
+        {/* Customer Acquisition Channels */}
+        <div className="card">
+          <div className="card-header">
+            <h3>
+              <Users size={18} style={{ color: 'var(--color-primary)' }} />
+              Customer Acquisition Channels
+            </h3>
+          </div>
+          <div className="card-body">
+            <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              How our enrolled clients discovered JB Groups.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+              {(() => {
+                if (customers.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                      No customer profiles enrolled yet.
+                    </div>
+                  );
+                }
+                const maxCount = Math.max(...referralStats.map(d => d.count), 1);
+                return referralStats.map((d, index) => {
+                  const percentage = (d.count / maxCount) * 100;
+                  const totalPercentage = Math.round((d.count / customers.length) * 100) || 0;
+                  return (
+                    <div key={d.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem' }}>
+                        <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.775rem' }}>#{index + 1}</span>
+                          {d.name}
+                        </span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
+                          {d.count} ({totalPercentage}%)
+                        </span>
+                      </div>
+                      <div style={{ height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div 
+                          style={{ 
+                            height: '100%', 
+                            width: `${percentage}%`, 
+                            backgroundColor: 
+                              d.name === 'Social Media' ? 'var(--color-primary)' :
+                              d.name === 'Customer Referral' ? 'var(--color-success)' :
+                              d.name === 'In-Person Visit' ? 'var(--color-warning)' : '#94a3b8', 
+                            borderRadius: '4px',
+                            transition: 'width 0.5s ease-in-out'
+                          }} 
+                        />
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+
+        {/* Top Word-of-Mouth Brand Advocates */}
+        <div className="card">
+          <div className="card-header">
+            <h3>
+              <TrendingUp size={18} style={{ color: 'var(--color-success)' }} />
+              Top Referring Customers
+            </h3>
+          </div>
+          <div className="card-body">
+            <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              Active clients who have referred the most new customers.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {topReferrers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                  No customer-referred profiles logged yet.
+                </div>
+              ) : (
+                topReferrers.map((ref, idx) => (
+                  <div 
+                    key={ref.name} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      padding: '0.75rem 1rem', 
+                      borderRadius: '8px', 
+                      border: '1px solid var(--border-light)', 
+                      backgroundColor: idx === 0 ? 'var(--color-success-light)' : '#fafafa' 
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{ref.name}</div>
+                      <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>{ref.contact}</div>
+                    </div>
+                    <span 
+                      className={`badge ${idx === 0 ? 'success' : 'info'}`} 
+                      style={{ fontSize: '0.825rem', fontWeight: 700, padding: '0.25rem 0.625rem', borderRadius: '6px' }}
+                    >
+                      {ref.count} {ref.count === 1 ? 'Referral' : 'Referrals'}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 

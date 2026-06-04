@@ -1,16 +1,30 @@
 import React, { useState } from 'react';
-import { db } from '../lib/db';
-import { UsersRound, Plus, Edit2, CheckCircle2, Clock, Calendar, FileText, Check, X, RefreshCw } from 'lucide-react';
+import { db, TODAY_DATE } from '../lib/db';
+import { UsersRound, Plus, Edit2, Eye, CheckCircle2, Clock, Calendar, FileText, Check, X, RefreshCw } from 'lucide-react';
 
 export default function StaffModule({ activeRole, triggerUpdate }) {
   const [staff, setStaff] = useState(db.getStaff());
   const [attendance, setAttendance] = useState(db.getAttendance());
   const [activeTab, setActiveTab] = useState('roster'); // roster | attendance | payroll
-  const [selectedDate, setSelectedDate] = useState('2026-06-01'); // Default: current day
+  const [selectedDate, setSelectedDate] = useState(TODAY_DATE); // Default: current day
   const [selectedMonth, setSelectedMonth] = useState('2026-05'); // Default payroll month
   const [showRosterModal, setShowRosterModal] = useState(false);
   const [viewingPayslip, setViewingPayslip] = useState(null);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [viewingEmployeeDetails, setViewingEmployeeDetails] = useState(null);
+
+  // Helper to calculate age dynamically based on reference date 2026-06-03
+  const calculateAge = (dobString) => {
+    if (!dobString) return '';
+    const dobDate = new Date(dobString);
+    const refDate = new Date(TODAY_DATE);
+    let age = refDate.getFullYear() - dobDate.getFullYear();
+    const monthDiff = refDate.getMonth() - dobDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && refDate.getDate() < dobDate.getDate())) {
+      age--;
+    }
+    return age >= 0 ? age : 0;
+  };
 
   // Roster form fields
   const [rosterForm, setRosterForm] = useState({
@@ -18,12 +32,29 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
     contact: '',
     role: 'Seamstress',
     salary: '',
-    join_date: '2026-01-01'
+    join_date: '2026-01-01',
+    dob: '',
+    religion: '',
+    age: '',
+    photo: '',
+    permanent_address: '',
+    gender: 'Female',
+    marital_status: 'Single',
+    email: '',
+    emergency_name: '',
+    emergency_address: '',
+    emergency_phone: '',
+    emergency_relation: '',
+    bank_acc_holder: '',
+    bank_name: '',
+    bank_acc_number: '',
+    bank_branch: '',
+    bank_passbook_link: ''
   });
 
   // Log attendance fields for the selected date
   const [attendanceLog, setAttendanceLog] = useState(() => {
-    const list = db.getAttendance().filter(a => a.date === '2026-06-01');
+    const list = db.getAttendance().filter(a => a.date === TODAY_DATE);
     const initialMap = {};
     db.getStaff().forEach(s => {
       const match = list.find(l => l.staff_id === s.id);
@@ -84,7 +115,24 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       contact: rosterForm.contact,
       role: rosterForm.role,
       salary: Number(rosterForm.salary),
-      join_date: rosterForm.join_date
+      join_date: rosterForm.join_date,
+      dob: rosterForm.dob,
+      religion: rosterForm.religion,
+      age: rosterForm.dob ? calculateAge(rosterForm.dob) : null,
+      photo: rosterForm.photo,
+      permanent_address: rosterForm.permanent_address,
+      gender: rosterForm.gender,
+      marital_status: rosterForm.marital_status,
+      email: rosterForm.email,
+      emergency_name: rosterForm.emergency_name,
+      emergency_address: rosterForm.emergency_address,
+      emergency_phone: rosterForm.emergency_phone,
+      emergency_relation: rosterForm.emergency_relation,
+      bank_acc_holder: rosterForm.bank_acc_holder,
+      bank_name: rosterForm.bank_name,
+      bank_acc_number: rosterForm.bank_acc_number,
+      bank_branch: rosterForm.bank_branch,
+      bank_passbook_link: rosterForm.bank_passbook_link
     });
     setShowRosterModal(false);
     refreshData();
@@ -97,7 +145,24 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       contact: '',
       role: 'Seamstress',
       salary: '',
-      join_date: '2026-01-01'
+      join_date: '2026-01-01',
+      dob: '',
+      religion: '',
+      age: '',
+      photo: '',
+      permanent_address: '',
+      gender: 'Female',
+      marital_status: 'Single',
+      email: '',
+      emergency_name: '',
+      emergency_address: '',
+      emergency_phone: '',
+      emergency_relation: '',
+      bank_acc_holder: '',
+      bank_name: '',
+      bank_acc_number: '',
+      bank_branch: '',
+      bank_passbook_link: ''
     });
     setEditingEmployee(null);
     setShowRosterModal(true);
@@ -105,11 +170,28 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
 
   const openEditEmployee = (emp) => {
     setRosterForm({
-      name: emp.name,
-      contact: emp.contact,
-      role: emp.role,
-      salary: emp.salary,
-      join_date: emp.join_date
+      name: emp.name || '',
+      contact: emp.contact || '',
+      role: emp.role || 'Seamstress',
+      salary: emp.salary || '',
+      join_date: emp.join_date || '2026-01-01',
+      dob: emp.dob || '',
+      religion: emp.religion || '',
+      age: emp.dob ? calculateAge(emp.dob).toString() : (emp.age ? emp.age.toString() : ''),
+      photo: emp.photo || '',
+      permanent_address: emp.permanent_address || '',
+      gender: emp.gender || 'Female',
+      marital_status: emp.marital_status || 'Single',
+      email: emp.email || '',
+      emergency_name: emp.emergency_name || '',
+      emergency_address: emp.emergency_address || '',
+      emergency_phone: emp.emergency_phone || '',
+      emergency_relation: emp.emergency_relation || '',
+      bank_acc_holder: emp.bank_acc_holder || '',
+      bank_name: emp.bank_name || '',
+      bank_acc_number: emp.bank_acc_number || '',
+      bank_branch: emp.bank_branch || '',
+      bank_passbook_link: emp.bank_passbook_link || ''
     });
     setEditingEmployee(emp);
     setShowRosterModal(true);
@@ -161,11 +243,11 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
   const getTailorStats = () => {
     const ordersList = db.getOrders();
     const staffList = db.getStaff();
-    const refDate = new Date('2026-06-01');
+    const refDate = new Date(TODAY_DATE);
 
     return staffList.map(s => {
-      // Filter orders assigned to this staff member and completed
-      const staffOrders = ordersList.filter(o => o.assigned_staff_id === s.id && o.status === 'completed');
+      // Filter orders assigned to this staff member and completed or delivered
+      const staffOrders = ordersList.filter(o => o.assigned_staff_id === s.id && (o.status === 'completed' || o.status === 'delivered'));
 
       let dailyCount = 0;
       let weeklyCount = 0;
@@ -179,8 +261,8 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         const diffTime = refDate - compDate;
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
-        // Daily (completed today, June 1, 2026)
-        if (compDateStr === '2026-06-01') {
+        // Daily (completed today)
+        if (compDateStr === TODAY_DATE) {
           dailyCount++;
         }
         // Weekly (completed in last 7 days)
@@ -288,11 +370,16 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                     <td>{attendance.filter(a => a.staff_id === emp.id && a.status === 'Absent' && a.leave_type === 'casual').length} days</td>
                     <td>{attendance.filter(a => a.staff_id === emp.id && a.status === 'Absent' && a.leave_type === 'vacation').length} days</td>
                     <td>
-                      {!isReadOnly ? (
-                        <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openEditEmployee(emp)}>
-                          <Edit2 size={14} /> Edit
+                      <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
+                        <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem' }} onClick={() => setViewingEmployeeDetails(emp)} title="View Profile">
+                          <Eye size={14} /> View
                         </button>
-                      ) : '—'}
+                        {!isReadOnly && (
+                          <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openEditEmployee(emp)} title="Edit Profile">
+                            <Edit2 size={14} /> Edit
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -471,7 +558,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                 </p>
               </div>
               <div style={{ fontSize: '0.8rem', backgroundColor: '#f1f5f9', padding: '0.35rem 0.75rem', borderRadius: '6px', fontWeight: 600 }}>
-                Reference Date: 2026-06-01
+                Reference Date: {TODAY_DATE}
               </div>
             </div>
 
@@ -558,7 +645,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       {/* Roster Edit/Add Modal */}
       {showRosterModal && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: '850px' }}>
             <div className="modal-header">
               <h3>{editingEmployee ? 'Edit Staff Profile' : 'Enroll New Staff Member'}</h3>
               <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowRosterModal(false)}>
@@ -566,63 +653,286 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
               </button>
             </div>
             <form onSubmit={saveRoster}>
-              <div className="modal-body">
-                <div className="form-grid">
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label">Employee Name *</label>
-                    <input 
-                      type="text"
-                      className="form-input"
-                      required
-                      value={rosterForm.name}
-                      onChange={e => setRosterForm({ ...rosterForm, name: e.target.value })}
-                      placeholder="e.g. Master Ali"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Contact Details</label>
-                    <input 
-                      type="text"
-                      className="form-input"
-                      value={rosterForm.contact}
-                      onChange={e => setRosterForm({ ...rosterForm, contact: e.target.value })}
-                      placeholder="+1 (555) 000-0000"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Designation / Role</label>
-                    <select 
-                      className="form-select"
-                      value={rosterForm.role}
-                      onChange={e => setRosterForm({ ...rosterForm, role: e.target.value })}
-                    >
-                      <option value="Master Tailor">Master Tailor</option>
-                      <option value="Seamstress">Seamstress</option>
-                      <option value="Apprentice Stitcher">Apprentice Stitcher</option>
-                      <option value="Store Assistant">Store Assistant</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Monthly Basic Salary (LKR) *</label>
-                    <input 
-                      type="number"
-                      className="form-input"
-                      required
-                      value={rosterForm.salary}
-                      onChange={e => setRosterForm({ ...rosterForm, salary: e.target.value })}
-                      placeholder="e.g. 1000"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Date of Hire</label>
-                    <input 
-                      type="date"
-                      className="form-input"
-                      value={rosterForm.join_date}
-                      onChange={e => setRosterForm({ ...rosterForm, join_date: e.target.value })}
-                    />
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                
+                {/* 1. Personal Details */}
+                <div>
+                  <h4 style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                    1. Personal Details
+                  </h4>
+                  <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Full Name *</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        required
+                        value={rosterForm.name}
+                        onChange={e => setRosterForm({ ...rosterForm, name: e.target.value })}
+                        placeholder="e.g. Master Tailor Ali"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Gender</label>
+                      <select 
+                        className="form-select"
+                        value={rosterForm.gender}
+                        onChange={e => setRosterForm({ ...rosterForm, gender: e.target.value })}
+                      >
+                        <option value="Female">Female</option>
+                        <option value="Male">Male</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Date of Birth</label>
+                      <input 
+                        type="date"
+                        className="form-input"
+                        value={rosterForm.dob}
+                        onChange={(e) => {
+                          const dob = e.target.value;
+                          setRosterForm({ ...rosterForm, dob, age: calculateAge(dob).toString() });
+                        }}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Age (Auto Calculated)</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        disabled
+                        style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed', fontWeight: 600 }}
+                        value={rosterForm.age || '—'}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Marital Status</label>
+                      <select 
+                        className="form-select"
+                        value={rosterForm.marital_status}
+                        onChange={e => setRosterForm({ ...rosterForm, marital_status: e.target.value })}
+                      >
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                        <option value="Divorced">Divorced</option>
+                        <option value="Widowed">Widowed</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Religion</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.religion}
+                        onChange={e => setRosterForm({ ...rosterForm, religion: e.target.value })}
+                        placeholder="e.g. Buddhism"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Phone Number</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.contact}
+                        onChange={e => setRosterForm({ ...rosterForm, contact: e.target.value })}
+                        placeholder="+94 (77) 123-4567"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Email</label>
+                      <input 
+                        type="email"
+                        className="form-input"
+                        value={rosterForm.email}
+                        onChange={e => setRosterForm({ ...rosterForm, email: e.target.value })}
+                        placeholder="ali@jbgroup.com"
+                      />
+                    </div>
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Photo (Google Drive Link or URL)</label>
+                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <input 
+                          type="text"
+                          className="form-input"
+                          value={rosterForm.photo}
+                          onChange={e => setRosterForm({ ...rosterForm, photo: e.target.value })}
+                          placeholder="https://drive.google.com/... or image URL"
+                          style={{ flex: 1 }}
+                        />
+                        {rosterForm.photo && (
+                          <img 
+                            src={rosterForm.photo} 
+                            alt="Preview" 
+                            style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-light)', flexShrink: 0 }} 
+                            onError={(e) => e.target.style.display = 'none'} 
+                          />
+                        )}
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ gridColumn: 'span 3' }}>
+                      <label className="form-label">Permanent Address</label>
+                      <textarea 
+                        className="form-textarea"
+                        value={rosterForm.permanent_address}
+                        onChange={e => setRosterForm({ ...rosterForm, permanent_address: e.target.value })}
+                        placeholder="House No, Street, City"
+                        rows={2}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* 2. Job Info */}
+                <div>
+                  <h4 style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                    2. Job Details
+                  </h4>
+                  <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                    <div className="form-group">
+                      <label className="form-label">Designation / Role</label>
+                      <select 
+                        className="form-select"
+                        value={rosterForm.role}
+                        onChange={e => setRosterForm({ ...rosterForm, role: e.target.value })}
+                      >
+                        <option value="Master Tailor">Master Tailor</option>
+                        <option value="Seamstress">Seamstress</option>
+                        <option value="Apprentice Stitcher">Apprentice Stitcher</option>
+                        <option value="Store Assistant">Store Assistant</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Monthly Basic Salary (LKR) *</label>
+                      <input 
+                        type="number"
+                        className="form-input"
+                        required
+                        value={rosterForm.salary}
+                        onChange={e => setRosterForm({ ...rosterForm, salary: e.target.value })}
+                        placeholder="e.g. 75000"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Date of Hire</label>
+                      <input 
+                        type="date"
+                        className="form-input"
+                        value={rosterForm.join_date}
+                        onChange={e => setRosterForm({ ...rosterForm, join_date: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Emergency Contact Details */}
+                <div>
+                  <h4 style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                    3. Emergency Contact Details
+                  </h4>
+                  <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Contact Person Name</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.emergency_name}
+                        onChange={e => setRosterForm({ ...rosterForm, emergency_name: e.target.value })}
+                        placeholder="e.g. Fathima Ali"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Phone Number</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.emergency_phone}
+                        onChange={e => setRosterForm({ ...rosterForm, emergency_phone: e.target.value })}
+                        placeholder="+94 (77) 765-4321"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Relationship</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.emergency_relation}
+                        onChange={e => setRosterForm({ ...rosterForm, emergency_relation: e.target.value })}
+                        placeholder="e.g. Spouse / Mother / Brother"
+                      />
+                    </div>
+                    <div className="form-group" style={{ gridColumn: 'span 4' }}>
+                      <label className="form-label">Emergency Contact Address</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.emergency_address}
+                        onChange={e => setRosterForm({ ...rosterForm, emergency_address: e.target.value })}
+                        placeholder="Contact address detail"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Bank Details */}
+                <div>
+                  <h4 style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                    4. Bank Account Details
+                  </h4>
+                  <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                    <div className="form-group">
+                      <label className="form-label">Account Holder Name</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.bank_acc_holder}
+                        onChange={e => setRosterForm({ ...rosterForm, bank_acc_holder: e.target.value })}
+                        placeholder="Name on passbook"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Bank Name</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.bank_name}
+                        onChange={e => setRosterForm({ ...rosterForm, bank_name: e.target.value })}
+                        placeholder="e.g. Bank of Ceylon"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Account Number</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.bank_acc_number}
+                        onChange={e => setRosterForm({ ...rosterForm, bank_acc_number: e.target.value })}
+                        placeholder="Bank Account Number"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Branch Name</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.bank_branch}
+                        onChange={e => setRosterForm({ ...rosterForm, bank_branch: e.target.value })}
+                        placeholder="e.g. Kollupitiya"
+                      />
+                    </div>
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Signed Bank Passbook Photo / Google Drive Link</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        value={rosterForm.bank_passbook_link}
+                        onChange={e => setRosterForm({ ...rosterForm, bank_passbook_link: e.target.value })}
+                        placeholder="https://drive.google.com/file/... link"
+                      />
+                    </div>
+                  </div>
+                </div>
+
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowRosterModal(false)}>Cancel</button>
@@ -686,11 +996,215 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
               </div>
 
               <div style={{ marginTop: '2rem', fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                This is a computer-generated document requiring no signature. Generated on 2026-06-01.
+                This is a computer-generated document requiring no signature. Generated on {TODAY_DATE}.
               </div>
             </div>
             <div className="modal-footer" style={{ justifyContent: 'center' }}>
               <button type="button" className="btn btn-primary" onClick={() => window.print()} style={{ width: '100%' }}>Print Payslip</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Profile View Modal */}
+      {viewingEmployeeDetails && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '800px' }}>
+            <div className="modal-header">
+              <h3>Staff Member Profile Card</h3>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setViewingEmployeeDetails(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Header profile section with avatar */}
+              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', backgroundColor: 'var(--color-primary-light)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)' }}>
+                {viewingEmployeeDetails.photo ? (
+                  <img 
+                    src={viewingEmployeeDetails.photo} 
+                    alt={viewingEmployeeDetails.name} 
+                    style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--bg-card)', boxShadow: 'var(--shadow-md)' }} 
+                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                  />
+                ) : null}
+                <div 
+                  style={{ 
+                    display: viewingEmployeeDetails.photo ? 'none' : 'flex', 
+                    width: '80px', 
+                    height: '80px', 
+                    borderRadius: '50%', 
+                    backgroundColor: 'var(--color-primary)', 
+                    color: 'var(--text-inverse)', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: '2rem', 
+                    fontWeight: 700,
+                    boxShadow: 'var(--shadow-md)',
+                    border: '3px solid var(--bg-card)'
+                  }}
+                >
+                  {viewingEmployeeDetails.name.charAt(0).toUpperCase()}
+                </div>
+                
+                <div>
+                  <h4 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, fontFamily: 'var(--font-display)' }}>
+                    {viewingEmployeeDetails.name}
+                  </h4>
+                  <p style={{ margin: '0.25rem 0 0 0', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span className="badge info">{viewingEmployeeDetails.role}</span>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>Hired: {viewingEmployeeDetails.join_date}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Grid sections */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                
+                {/* Personal Details */}
+                <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', color: 'var(--text-primary)' }}>
+                    Personal Information
+                  </h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Date of Birth:</span>
+                      <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.dob || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Age:</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {viewingEmployeeDetails.dob ? calculateAge(viewingEmployeeDetails.dob) : (viewingEmployeeDetails.age || '—')} years
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Gender:</span>
+                      <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.gender || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Marital Status:</span>
+                      <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.marital_status || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Religion:</span>
+                      <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.religion || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Phone:</span>
+                      <span style={{ fontWeight: 600 }}>{viewingEmployeeDetails.contact || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Email:</span>
+                      <span style={{ fontWeight: 500, wordBreak: 'break-all' }}>{viewingEmployeeDetails.email || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', marginTop: '0.25rem' }}>
+                      <span style={{ color: 'var(--text-muted)', marginBottom: '0.125rem' }}>Permanent Address:</span>
+                      <span style={{ fontWeight: 500, lineHeight: 1.4 }}>{viewingEmployeeDetails.permanent_address || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Job & Salary & Leave Balances */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', color: 'var(--text-primary)' }}>
+                      Employment Details
+                    </h5>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Role:</span>
+                        <span className="badge info" style={{ padding: '0.125rem 0.5rem' }}>{viewingEmployeeDetails.role || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Basic Salary:</span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>Rs. {Number(viewingEmployeeDetails.salary || 0).toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Sick Leaves Left:</span>
+                        <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.leaves?.sick ?? 12} days</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Casual Leaves Left:</span>
+                        <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.leaves?.casual ?? 12} days</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Vacation Leaves Left:</span>
+                        <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.leaves?.vacation ?? 15} days</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Emergency Contact */}
+                  <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', color: 'var(--text-primary)' }}>
+                      Emergency Contact Details
+                    </h5>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Name:</span>
+                        <span style={{ fontWeight: 600 }}>{viewingEmployeeDetails.emergency_name || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Phone:</span>
+                        <span style={{ fontWeight: 600 }}>{viewingEmployeeDetails.emergency_phone || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Relationship:</span>
+                        <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.emergency_relation || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Address:</span>
+                        <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.emergency_address || '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Bank Account Section */}
+              <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', color: 'var(--text-primary)' }}>
+                  Bank Details
+                </h5>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', fontSize: '0.875rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>ACC HOLDER</span>
+                    <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.bank_acc_holder || '—'}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>BANK</span>
+                    <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.bank_name || '—'}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>ACCOUNT NO</span>
+                    <span style={{ fontWeight: 600 }}>{viewingEmployeeDetails.bank_acc_number || '—'}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>BRANCH</span>
+                    <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.bank_branch || '—'}</span>
+                  </div>
+                </div>
+
+                {viewingEmployeeDetails.bank_passbook_link && (
+                  <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>Signed Bank Passbook Photo Link:</span>
+                    <a 
+                      href={viewingEmployeeDetails.bank_passbook_link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="btn btn-secondary btn-sm"
+                      style={{ textDecoration: 'none', color: 'var(--color-primary)', fontWeight: 600 }}
+                    >
+                      Open Google Drive / Passbook Link
+                    </a>
+                  </div>
+                )}
+              </div>
+
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" onClick={() => setViewingEmployeeDetails(null)}>Close Profile</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from './lib/db';
+import { db, TODAY_DATE } from './lib/db';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import AnalyticsModule from './components/AnalyticsModule';
@@ -11,6 +11,8 @@ import ComplaintModule from './components/ComplaintModule';
 import ApprovalQueue from './components/ApprovalQueue';
 import AuditLogs from './components/AuditLogs';
 import RetailModule from './components/RetailModule';
+import VisitModule from './components/VisitModule';
+import CallModule from './components/CallModule';
 import { AlertCircle, ShieldAlert, Sparkles, X, BellRing } from 'lucide-react';
 
 
@@ -41,8 +43,8 @@ function App() {
     setLowStockCount(inventory.filter(i => i.stock_on_hand < i.reorder_threshold).length);
     setOpenComplaintsCount(complaints.filter(c => c.status !== 'Resolved').length);
     
-    // Check if attendance for today (2026-06-01) is logged
-    const loggedToday = attendance.some(a => a.date === '2026-06-01');
+    // Check if attendance for today (TODAY_DATE) is logged
+    const loggedToday = attendance.some(a => a.date === TODAY_DATE);
     setAttendanceMissingToday(!loggedToday);
   }, [dbUpdate, activeRole]);
 
@@ -119,6 +121,22 @@ function App() {
             key={`retail-${activeRole}`} 
           />
         );
+      case 'visits':
+        return (
+          <VisitModule 
+            activeRole={activeRole} 
+            triggerUpdate={triggerUpdate} 
+            key={`${dbUpdate}-${activeRole}`} 
+          />
+        );
+      case 'calls':
+        return (
+          <CallModule 
+            activeRole={activeRole} 
+            triggerUpdate={triggerUpdate} 
+            key={`${dbUpdate}-${activeRole}`} 
+          />
+        );
 
       case 'staff':
         return (
@@ -160,10 +178,14 @@ function App() {
             key={`${dbUpdate}-${activeRole}`} 
           />
         );
-      default:
-        return <div>Module view not found.</div>;
     }
   };
+
+  const formattedTodayDate = new Date(TODAY_DATE).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 
   return (
     <div className="app-container">
@@ -198,7 +220,7 @@ function App() {
                 <div className="alert-banner danger">
                   <div className="alert-banner-left">
                     <AlertCircle size={16} />
-                    <span><strong>Attendance Alert</strong>: Today's employee shift hours (June 1, 2026) have not been logged!</span>
+                    <span><strong>Attendance Alert</strong>: Today's employee shift hours ({formattedTodayDate}) have not been logged!</span>
                   </div>
                   <button className="alert-action-btn" onClick={() => setCurrentSection('staff')}>Log Hours Now</button>
                 </div>

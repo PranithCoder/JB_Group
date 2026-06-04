@@ -16,7 +16,10 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
     contact: '',
     email: '',
     preferences: '',
-    notes: ''
+    notes: '',
+    referralSource: '',
+    referralDetails: '',
+    referralDetailsOther: ''
   });
 
   const refreshList = () => {
@@ -34,18 +37,31 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
   );
 
   const openAddModal = () => {
-    setFormData({ name: '', contact: '', email: '', preferences: '', notes: '' });
+    setFormData({ 
+      name: '', 
+      contact: '', 
+      email: '', 
+      preferences: '', 
+      notes: '', 
+      referralSource: '', 
+      referralDetails: '',
+      referralDetailsOther: ''
+    });
     setEditingCustomer(null);
     setShowFormModal(true);
   };
 
   const openEditModal = (cust) => {
+    const isOtherDetails = cust.referralDetails && cust.referralDetails.startsWith('Other: ');
     setFormData({
       name: cust.name,
       contact: cust.contact,
       email: cust.email || '',
       preferences: cust.preferences || '',
-      notes: cust.notes || ''
+      notes: cust.notes || '',
+      referralSource: cust.referralSource || '',
+      referralDetails: cust.referralDetails || '',
+      referralDetailsOther: isOtherDetails ? cust.referralDetails.substring(7) : ''
     });
     setEditingCustomer(cust);
     setShowFormModal(true);
@@ -58,9 +74,10 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
       return;
     }
 
+    const { referralDetailsOther, ...cleanFormData } = formData;
     const saved = db.saveCustomer({
       ...(editingCustomer ? { id: editingCustomer.id } : {}),
-      ...formData
+      ...cleanFormData
     });
 
     setNotification({
@@ -165,7 +182,14 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
               ) : (
                 filteredCustomers.map(cust => (
                   <tr key={cust.id}>
-                    <td style={{ fontWeight: 600 }}>{cust.name}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      {cust.name}
+                      {cust.referralSource && (
+                        <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '0.125rem' }}>
+                          via {cust.referralSource} {cust.referralDetails ? `(${cust.referralDetails})` : ''}
+                        </div>
+                      )}
+                    </td>
                     <td>{cust.contact}</td>
                     <td>{cust.email || '—'}</td>
                     <td style={{ maxWidth: '280px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={cust.preferences}>
@@ -262,6 +286,144 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
                       placeholder="Any notes about behavior, billing, or style preferences..."
                     />
                   </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">How they know JB groups (Referral Source)</label>
+                    <select 
+                      className="form-select" 
+                      value={formData.referralSource}
+                      onChange={e => {
+                        const source = e.target.value;
+                        setFormData({ ...formData, referralSource: source, referralDetails: '', referralDetailsOther: '' });
+                      }}
+                    >
+                      <option value="">Select Option</option>
+                      <option value="Social Media">Social Media</option>
+                      <option value="In-Person Visit">In-Person Visit</option>
+                      <option value="Customer Referral">Other Customer Referral</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  {formData.referralSource === 'Social Media' && (
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Social Media Platform</label>
+                      <select 
+                        className="form-select" 
+                        value={formData.referralDetails.startsWith('Other: ') ? 'Other Social Media' : formData.referralDetails}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === 'Other Social Media') {
+                            setFormData({ ...formData, referralDetails: `Other: ${formData.referralDetailsOther || ''}` });
+                          } else {
+                            setFormData({ ...formData, referralDetails: val });
+                          }
+                        }}
+                      >
+                        <option value="">Select Platform</option>
+                        <option value="Instagram">Instagram</option>
+                        <option value="Facebook">Facebook</option>
+                        <option value="TikTok">TikTok</option>
+                        <option value="Google Search">Google Search</option>
+                        <option value="YouTube">YouTube</option>
+                        <option value="Other Social Media">Other Social Media</option>
+                      </select>
+                      {(formData.referralDetails === 'Other Social Media' || formData.referralDetails.startsWith('Other: ')) && (
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="Please specify platform..."
+                          value={formData.referralDetailsOther}
+                          onChange={e => setFormData({ ...formData, referralDetails: `Other: ${e.target.value}`, referralDetailsOther: e.target.value })}
+                          style={{ marginTop: '0.5rem' }}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {formData.referralSource === 'In-Person Visit' && (
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">In-Person Details</label>
+                      <select 
+                        className="form-select" 
+                        value={formData.referralDetails.startsWith('Other: ') ? 'Other' : formData.referralDetails}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === 'Other') {
+                            setFormData({ ...formData, referralDetails: `Other: ${formData.referralDetailsOther || ''}` });
+                          } else {
+                            setFormData({ ...formData, referralDetails: val });
+                          }
+                        }}
+                      >
+                        <option value="">Select Option</option>
+                        <option value="Walk-in / Signboard">Walk-in / Signboard</option>
+                        <option value="Local Event">Local Event</option>
+                        <option value="Flyer / Poster">Flyer / Poster</option>
+                        <option value="Word of Mouth (General)">Word of Mouth (General)</option>
+                        <option value="Other">Other</option>
+                      </select>
+                      {(formData.referralDetails === 'Other' || formData.referralDetails.startsWith('Other: ')) && (
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="Please specify..."
+                          value={formData.referralDetailsOther}
+                          onChange={e => setFormData({ ...formData, referralDetails: `Other: ${e.target.value}`, referralDetailsOther: e.target.value })}
+                          style={{ marginTop: '0.5rem' }}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {formData.referralSource === 'Customer Referral' && (
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Referred By Customer</label>
+                      <select 
+                        className="form-select" 
+                        value={formData.referralDetails.startsWith('Other: ') ? 'Other Person' : formData.referralDetails}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === 'Other Person') {
+                            setFormData({ ...formData, referralDetails: `Other: ${formData.referralDetailsOther || ''}` });
+                          } else {
+                            setFormData({ ...formData, referralDetails: val });
+                          }
+                        }}
+                      >
+                        <option value="">Select Referring Customer</option>
+                        {customers
+                          .filter(c => !editingCustomer || c.id !== editingCustomer.id)
+                          .map(c => (
+                            <option key={c.id} value={c.name}>{c.name} ({c.contact})</option>
+                          ))
+                        }
+                        <option value="Other Person">Other Person (Not Listed)</option>
+                      </select>
+                      {(formData.referralDetails === 'Other Person' || formData.referralDetails.startsWith('Other: ')) && (
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="Enter referrer name..."
+                          value={formData.referralDetailsOther}
+                          onChange={e => setFormData({ ...formData, referralDetails: `Other: ${e.target.value}`, referralDetailsOther: e.target.value })}
+                          style={{ marginTop: '0.5rem' }}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {formData.referralSource === 'Other' && (
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Referral Details</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        placeholder="Please specify how they knew us..."
+                        value={formData.referralDetails}
+                        onChange={e => setFormData({ ...formData, referralDetails: e.target.value })}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="modal-footer">
@@ -307,6 +469,19 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
                     <span className="detail-label">Account Notes</span>
                     <span className="detail-val">{viewingHistory.customer.notes || 'No general notes'}</span>
                   </div>
+                  <div className="detail-item" style={{ gridColumn: 'span 2' }}>
+                    <span className="detail-label">Referral Source (How they know us)</span>
+                    <span className="detail-val" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                      <span className="badge info" style={{ borderRadius: '4px', padding: '0.125rem 0.375rem' }}>
+                        {viewingHistory.customer.referralSource || 'Not Specified'}
+                      </span>
+                      {viewingHistory.customer.referralDetails && (
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                          — {viewingHistory.customer.referralDetails}
+                        </span>
+                      )}
+                    </span>
+                  </div>
                 </div>
 
                 <div>
@@ -350,8 +525,11 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
                                  </span>
                               </td>
                               <td>
-                                <span className={`badge ${o.status === 'completed' ? 'success' : o.status === 'in-progress' ? 'warning' : 'info'}`}>
-                                  {o.status}
+                                <span className={`badge ${
+                                  o.status === 'completed' || o.status === 'delivered' ? 'success' : 
+                                  o.status === 'in-progress' ? 'warning' : 'info'
+                                }`}>
+                                  {o.status === 'delivered' ? 'delivered to customer' : o.status}
                                 </span>
                               </td>
                             </tr>

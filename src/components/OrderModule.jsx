@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { db, DRESS_TYPES } from '../lib/db';
+import { db, DRESS_TYPES, TODAY_DATE } from '../lib/db';
 import { Search, Plus, Edit2, Trash2, X, AlertTriangle, Eye, RefreshCw, Calendar, ShoppingBag } from 'lucide-react';
 
 export default function OrderModule({ activeRole, triggerUpdate }) {
@@ -16,8 +16,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   const [newlyBookedOrder, setNewlyBookedOrder] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [viewingCustomer, setViewingCustomer] = useState(null);
-  const [completedFromDate, setCompletedFromDate] = useState('2026-06-01');
-  const [completedToDate, setCompletedToDate] = useState('2026-06-01');
+  const [completedFromDate, setCompletedFromDate] = useState(TODAY_DATE);
+  const [completedToDate, setCompletedToDate] = useState(TODAY_DATE);
 
   const [formData, setFormData] = useState({
     customer_id: '',
@@ -29,7 +29,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     amount: '',
     payment_status: 'unpaid',
     amount_paid: '',
-    assigned_staff_id: ''
+    assigned_staff_id: '',
+    bill_no: ''
   });
 
   const refreshList = () => {
@@ -41,7 +42,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   };
 
   const getDaysRemaining = (dueDateStr) => {
-    const today = new Date('2026-06-01'); // Fixed local time reference
+    const today = new Date(TODAY_DATE); // Dynamic local time reference
     const dueDate = new Date(dueDateStr);
     const diffTime = dueDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -73,7 +74,11 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     if (statusFilter === 'soon') return isDueSoon(o);
     if (statusFilter === 'completed') {
       const compDate = o.completed_date || o.delivery_date;
-      return o.status === 'completed' && compDate >= completedFromDate && compDate <= completedToDate;
+      return (o.status === 'completed' || o.status === 'delivered') && compDate >= completedFromDate && compDate <= completedToDate;
+    }
+    if (statusFilter === 'delivered') {
+      const compDate = o.completed_date || o.delivery_date;
+      return o.status === 'delivered' && compDate >= completedFromDate && compDate <= completedToDate;
     }
     return o.status === statusFilter;
   });
@@ -81,7 +86,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   const openAddModal = () => {
     setFormData({
       customer_id: '',
-      delivery_date: new Date('2026-06-03').toISOString().split('T')[0], // Default 2 days out
+      delivery_date: TODAY_DATE, // Default to today
       service_type: 'Stitching',
       dress_type: 'modern dress (Custom)',
       note: '',
@@ -89,7 +94,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       amount: '',
       payment_status: 'unpaid',
       amount_paid: '',
-      assigned_staff_id: ''
+      assigned_staff_id: '',
+      bill_no: ''
     });
     setCustSearch('');
     setEditingOrder(null);
@@ -108,7 +114,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       amount: order.amount,
       payment_status: order.payment_status,
       amount_paid: order.amount_paid !== undefined ? order.amount_paid : (order.payment_status === 'paid' ? order.amount : 0),
-      assigned_staff_id: order.assigned_staff_id || ''
+      assigned_staff_id: order.assigned_staff_id || '',
+      bill_no: order.bill_no || ''
     });
     setCustSearch(matchingCust ? `${matchingCust.name} (${matchingCust.contact})` : '');
     setEditingOrder(order);
@@ -130,15 +137,30 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         alert('Required fields are missing.');
         return;
       }
-
+      let finalPaymentStatus = formData.payment_status;
       let finalAmountPaid = 0;
-      if (formData.payment_status === 'paid') {
-        finalAmountPaid = Number(formData.amount);
-      } else if (formData.payment_status === 'partially_paid') {
-        finalAmountPaid = Number(formData.amount_paid);
-        if (isNaN(finalAmountPaid) || finalAmountPaid <= 0 || finalAmountPaid >= Number(formData.amount)) {
-          alert('For partially paid status, please enter a valid paid amount (greater than 0 and less than the quoted price).');
+
+      if (formData.status === 'delivered' && formData.payment_status !== 'paid') {
+        const totalAmount = Number(formData.amount || 0);
+        const amountPaid = formData.payment_status === 'partially_paid' ? Number(formData.amount_paid || 0) : 0;
+        const balance = totalAmount - amountPaid;
+        const confirmPaid = window.confirm(`Customer has an outstanding balance of Rs. ${balance.toFixed(2)}.\n\nMark order as FULLY PAID and complete delivery?`);
+        if (confirmPaid) {
+          finalPaymentStatus = 'paid';
+          finalAmountPaid = totalAmount;
+        } else {
+          alert("Delivery aborted. Outstanding balance must be paid first.");
           return;
+        }
+      } else {
+        if (formData.payment_status === 'paid') {
+          finalAmountPaid = Number(formData.amount);
+        } else if (formData.payment_status === 'partially_paid') {
+          finalAmountPaid = Number(formData.amount_paid);
+          if (isNaN(finalAmountPaid) || finalAmountPaid <= 0 || finalAmountPaid >= Number(formData.amount)) {
+            alert('For partially paid status, please enter a valid paid amount (greater than 0 and less than the quoted price).');
+            return;
+          }
         }
       }
 
@@ -151,9 +173,10 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         note: formData.note,
         status: formData.status,
         amount: Number(formData.amount),
-        payment_status: formData.payment_status,
+        payment_status: finalPaymentStatus,
         amount_paid: finalAmountPaid,
-        assigned_staff_id: formData.assigned_staff_id
+        assigned_staff_id: formData.assigned_staff_id,
+        bill_no: formData.bill_no
       };
 
       const result = db.saveOrder(payload);
@@ -222,20 +245,36 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     const original = orders.find(o => o.id === orderId);
     if (!original) return;
 
-    const payload = {
+    let payload = {
       ...original,
       status: newStatus
     };
 
-    const result = db.saveOrder(payload);
-    if (result.status === 'success') {
-      setNotification({
-        type: 'success',
-        message: `Order ${original.order_no} status updated to ${newStatus}.`
-      });
-      refreshList();
-      triggerUpdate();
-      setTimeout(() => setNotification(null), 4000);
+    if (newStatus === 'delivered' && original.payment_status !== 'paid') {
+      const balance = original.amount - (original.amount_paid || 0);
+      const confirmPaid = window.confirm(`Customer has an outstanding balance of Rs. ${balance.toFixed(2)}.\n\nMark order as FULLY PAID and complete delivery?`);
+      if (confirmPaid) {
+        payload.payment_status = 'paid';
+        payload.amount_paid = original.amount;
+      } else {
+        alert("Delivery aborted. Outstanding balance must be paid first.");
+        return;
+      }
+    }
+
+    try {
+      const result = db.saveOrder(payload);
+      if (result.status === 'success') {
+        setNotification({
+          type: 'success',
+          message: `Order ${original.order_no} status updated to ${newStatus}.`
+        });
+        refreshList();
+        triggerUpdate();
+        setTimeout(() => setNotification(null), 4000);
+      }
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -320,6 +359,13 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                 Completed
               </button>
               <button 
+                onClick={() => setStatusFilter('delivered')}
+                className={`role-btn ${statusFilter === 'delivered' ? 'active' : ''}`}
+                style={{ padding: '0.25rem 0.625rem', fontSize: '0.775rem' }}
+              >
+                Delivered
+              </button>
+              <button 
                 onClick={() => setStatusFilter('overdue')}
                 className={`role-btn ${statusFilter === 'overdue' ? 'active' : ''}`}
                 style={{ padding: '0.25rem 0.625rem', fontSize: '0.775rem', color: 'var(--color-danger)' }}
@@ -335,7 +381,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
               </button>
             </div>
 
-            {statusFilter === 'completed' && (
+            {(statusFilter === 'completed' || statusFilter === 'delivered') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.825rem', padding: '0.25rem 0.5rem', backgroundColor: '#fafafa', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
                 <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>From:</span>
                 <input 
@@ -353,6 +399,9 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                   value={completedToDate}
                   onChange={e => setCompletedToDate(e.target.value)}
                 />
+                <span style={{ borderLeft: '1px solid var(--border-light)', paddingLeft: '0.5rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                  Filtered Count: {filteredOrders.length}
+                </span>
               </div>
             )}
 
@@ -367,7 +416,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Order No</th>
+                <th>Order / Bill No</th>
                 <th>Customer</th>
                 <th>Order Date</th>
                 <th>Delivery Due Date</th>
@@ -393,7 +442,13 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                   let dueLabel = ord.delivery_date;
                   let styleClass = '';
                   
-                  if (ord.status !== 'completed') {
+                  if (ord.status === 'completed') {
+                    dueLabel = `Completed: ${ord.completed_date || ord.delivery_date}`;
+                    styleClass = 'text-green';
+                  } else if (ord.status === 'delivered') {
+                    dueLabel = `Delivered: ${ord.completed_date || ord.delivery_date}`;
+                    styleClass = 'text-green';
+                  } else {
                     if (daysLeft < 0) {
                       dueLabel = `${ord.delivery_date} (Overdue ${Math.abs(daysLeft)}d)`;
                       styleClass = 'text-red';
@@ -404,14 +459,18 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       dueLabel = `${ord.delivery_date} (${daysLeft}d left)`;
                       styleClass = 'text-amber';
                     }
-                  } else {
-                    dueLabel = `Delivered: ${ord.completed_date || ord.delivery_date}`;
-                    styleClass = 'text-green';
                   }
 
                   return (
                     <tr key={ord.id} style={{ backgroundColor: isOverdue(ord) ? 'var(--color-danger-light)' : 'inherit' }}>
-                      <td style={{ fontWeight: 600 }}>{ord.order_no}</td>
+                      <td style={{ fontWeight: 600 }}>
+                        <div>{ord.order_no}</div>
+                        {ord.bill_no && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                            Bill: {ord.bill_no}
+                          </div>
+                        )}
+                      </td>
                       <td>
                         {ord.customer ? (
                           <button 
@@ -486,12 +545,12 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                         </div>
                       </td>
                       <td>
-                        {isReadOnly || ord.status === 'completed' ? (
+                        {isReadOnly ? (
                           <span className={`badge ${
-                            ord.status === 'completed' ? 'success' : 
+                            ord.status === 'completed' || ord.status === 'delivered' ? 'success' : 
                             ord.status === 'in-progress' ? 'warning' : 'info'
                           }`}>
-                            {ord.status}
+                            {ord.status === 'delivered' ? 'delivered to customer' : ord.status}
                           </span>
                         ) : (
                           <select
@@ -505,18 +564,36 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                               borderRadius: '4px',
                               fontWeight: 600,
                               backgroundColor: 
-                                ord.status === 'completed' ? 'var(--color-success-light)' : 
+                                ord.status === 'completed' || ord.status === 'delivered' ? 'var(--color-success-light)' : 
                                 ord.status === 'in-progress' ? 'var(--color-warning-light)' : 'var(--color-primary-light)',
                               color: 
-                                ord.status === 'completed' ? 'var(--color-success)' : 
+                                ord.status === 'completed' || ord.status === 'delivered' ? 'var(--color-success)' : 
                                 ord.status === 'in-progress' ? '#b45309' : 'var(--color-primary)',
                               border: 'none',
                               cursor: 'pointer'
                             }}
                           >
-                            <option value="pending">Pending</option>
-                            <option value="in-progress">In-Progress</option>
-                            <option value="completed">Completed</option>
+                            {ord.status === 'pending' && (
+                              <>
+                                <option value="pending">Pending</option>
+                                <option value="in-progress">In-Progress</option>
+                              </>
+                            )}
+                            {ord.status === 'in-progress' && (
+                              <>
+                                <option value="in-progress">In-Progress</option>
+                                <option value="completed">Completed</option>
+                              </>
+                            )}
+                            {ord.status === 'completed' && (
+                              <>
+                                <option value="completed">Completed</option>
+                                <option value="delivered">Delivered to the customer</option>
+                              </>
+                            )}
+                            {ord.status === 'delivered' && (
+                              <option value="delivered">Delivered to the customer</option>
+                            )}
                           </select>
                         )}
                       </td>
@@ -525,12 +602,12 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                           <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem' }} onClick={() => viewAuditLog(ord)} title="Audit Trail">
                             <Eye size={14} /> Audit
                           </button>
-                          {!isReadOnly && ord.status !== 'completed' && (
+                          {!isReadOnly && ord.status !== 'completed' && ord.status !== 'delivered' && (
                             <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openEditModal(ord)} title="Edit Order Details">
                               <Edit2 size={14} />
                             </button>
                           )}
-                          {!isReadOnly && ord.status !== 'completed' && (
+                          {!isReadOnly && ord.status !== 'completed' && ord.status !== 'delivered' && (
                             <button className="btn btn-secondary btn-sm text-red" style={{ padding: '0.25rem 0.5rem' }} onClick={() => handleDelete(ord.id)} title="Delete Order">
                               <Trash2 size={14} />
                             </button>
@@ -662,6 +739,16 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     />
                   </div>
                   <div className="form-group">
+                    <label className="form-label">Written Bill Number</label>
+                    <input 
+                      type="text"
+                      className="form-input"
+                      value={formData.bill_no || ''}
+                      onChange={e => setFormData({ ...formData, bill_no: e.target.value })}
+                      placeholder="e.g. B-9921"
+                    />
+                  </div>
+                  <div className="form-group">
                     <label className="form-label">Quoted Price (LKR) *</label>
                     <input 
                       type="number"
@@ -707,9 +794,27 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                         value={formData.status}
                         onChange={e => setFormData({ ...formData, status: e.target.value })}
                       >
-                        <option value="pending">Pending (Design)</option>
-                        <option value="in-progress">In-Progress (Stitching/Cutting)</option>
-                        <option value="completed">Completed & Verified</option>
+                        {editingOrder.status === 'pending' && (
+                          <>
+                            <option value="pending">Pending (Design)</option>
+                            <option value="in-progress">In-Progress (Stitching/Cutting)</option>
+                          </>
+                        )}
+                        {editingOrder.status === 'in-progress' && (
+                          <>
+                            <option value="in-progress">In-Progress (Stitching/Cutting)</option>
+                            <option value="completed">Completed & Verified</option>
+                          </>
+                        )}
+                        {editingOrder.status === 'completed' && (
+                          <>
+                            <option value="completed">Completed & Verified</option>
+                            <option value="delivered">Delivered to the customer</option>
+                          </>
+                        )}
+                        {editingOrder.status === 'delivered' && (
+                          <option value="delivered">Delivered to the customer</option>
+                        )}
                       </select>
                     </div>
                   )}
@@ -853,7 +958,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
           : `Unpaid (Bal: Rs. ${Number(newlyBookedOrder.amount).toFixed(2)})`;
 
         const messageText = `Dear ${customer.name}, your tailor booking is confirmed!
-Order No: ${newlyBookedOrder.order_no}
+Order No: ${newlyBookedOrder.order_no}${newlyBookedOrder.bill_no ? `\nBill No: ${newlyBookedOrder.bill_no}` : ''}
 Service: ${newlyBookedOrder.service_type} (${newlyBookedOrder.dress_type || 'modern dress (Custom)'})
 Price: Rs. ${Number(newlyBookedOrder.amount).toFixed(2)} [${paymentLabel}]
 Delivery Due: ${newlyBookedOrder.delivery_date}
@@ -895,6 +1000,12 @@ Thank you for choosing JB Groups Tailoring Shop!`;
                     <span class="label">Order Number:</span>
                     <span class="value">${newlyBookedOrder.order_no}</span>
                   </div>
+                  ${newlyBookedOrder.bill_no ? `
+                  <div class="info-row">
+                    <span class="label">Written Bill Number:</span>
+                    <span class="value">${newlyBookedOrder.bill_no}</span>
+                  </div>
+                  ` : ''}
                   <div class="info-row">
                     <span class="label">Date Booked:</span>
                     <span class="value">June 1, 2026</span>
