@@ -662,8 +662,8 @@ export const db = {
         const nxt = order.status;
         if (cur === 'pending' && nxt !== 'in-progress') {
           throw new Error('Invalid transition! Pending orders can only move to In-Progress.');
-        } else if (cur === 'in-progress' && nxt !== 'completed') {
-          throw new Error('Invalid transition! In-Progress orders can only move to Completed.');
+        } else if (cur === 'in-progress' && nxt !== 'completed' && nxt !== 'pending') {
+          throw new Error('Invalid transition! In-Progress orders can only move to Completed or Pending.');
         } else if (cur === 'completed' && nxt !== 'delivered') {
           throw new Error('Invalid transition! Completed orders can only move to Delivered.');
         } else if (cur === 'delivered') {

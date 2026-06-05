@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, TODAY_DATE, DRESS_TYPES } from '../lib/db';
 import { 
+  Camera,
   Clock, 
   Scissors, 
   Check, 
@@ -10,6 +11,7 @@ import {
   LogOut, 
   MapPin, 
   Phone, 
+  Upload,
   X,
   FileText,
   UserCheck
@@ -55,6 +57,8 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
   const [pickingUpOrder, setPickingUpOrder] = useState(null);
   const [pickupType, setPickupType] = useState('both'); // both | cutting | stitching
   const [pickupCuttingTailorId, setPickupCuttingTailorId] = useState('');
+  const [photoFront, setPhotoFront] = useState('');
+  const [photoBack, setPhotoBack] = useState('');
 
   useEffect(() => {
     setStaff(db.getStaff());
@@ -74,12 +78,16 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
   const handleSelectTailor = (id) => {
     setActiveTailorId(id);
     localStorage.setItem('jb_active_tailor_id', id);
+    setPhotoFront('');
+    setPhotoBack('');
     refreshData();
   };
 
   const handleLogout = () => {
     setActiveTailorId('');
     localStorage.removeItem('jb_active_tailor_id');
+    setPhotoFront('');
+    setPhotoBack('');
   };
 
   const handleRequestShortLeave = () => {
@@ -291,22 +299,72 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
     }
   };
 
+  const handleCompressAndSet = (file, side) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.src = reader.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const MAX_WIDTH = 400;
+        const MAX_HEIGHT = 400;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        if (side === 'front') {
+          setPhotoFront(compressedBase64);
+        } else {
+          setPhotoBack(compressedBase64);
+        }
+      };
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e, side) => {
+    const file = e.target.files[0];
+    if (file) {
+      handleCompressAndSet(file, side);
+    }
+  };
+
   const handleCompleteOrder = (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    if (!photoFront || !photoBack) {
+      alert('Please upload/capture both front and back views of the completed dress.');
+      return;
+    }
 
     const payload = {
       ...activeOrder,
       status: 'completed',
-      photo_front: '',
-      photo_back: ''
+      photo_front: photoFront,
+      photo_back: photoBack
     };
 
     try {
       db.saveOrder(payload);
       db.addAuditLog(
         `Completed Order ${activeOrder.order_no}`,
-        `Tailor ${activeTailor.name} finished tailoring.`
+        `Tailor ${activeTailor.name} finished tailoring and uploaded quality assurance photos.`
       );
+      setPhotoFront('');
+      setPhotoBack('');
       refreshData();
     } catch (err) {
       alert(err.message);
@@ -659,7 +717,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                   {activeOrder.cutting_status === 'pending' ? (
                     <span><Scissors size={18} /> Complete Cutting Work</span>
                   ) : (
-                    <span><CheckCircle2 size={18} /> Complete Order</span>
+                    <span><Camera size={18} /> Quality Assurance</span>
                   )}
                 </h3>
               </div>
@@ -680,12 +738,74 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
               ) : (
                 <form onSubmit={handleCompleteOrder} className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                    Please verify that all tailoring and stitching work for this order has been fully completed. Clicking below will finalize the order and notify the manager for delivery scheduling.
+                    Upload clear photos of the front and back of the finished dress to mark the job as completed and enable manager delivery scheduling.
                   </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {/* Front Photo Upload */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <label className="form-label" style={{ fontWeight: 600 }}>Front Side of Dress *</label>
+                      {photoFront ? (
+                        <div style={{ position: 'relative', width: '100%', height: '140px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                          <img src={photoFront} alt="Front View" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button 
+                            type="button" 
+                            onClick={() => setPhotoFront('')}
+                            style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', backgroundColor: 'rgba(15,23,42,0.7)', border: 'none', color: '#fff', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ border: '2px dashed var(--border-light)', borderRadius: '8px', padding: '1.25rem', textAlign: 'center', backgroundColor: '#fafafa', cursor: 'pointer', position: 'relative' }}>
+                          <Upload size={20} style={{ color: 'var(--text-muted)', marginBottom: '0.375rem' }} />
+                          <span style={{ fontSize: '0.775rem', display: 'block', color: 'var(--text-muted)' }}>Tap to snap or upload</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            capture="environment"
+                            onChange={(e) => handleFileChange(e, 'front')}
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Back Photo Upload */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <label className="form-label" style={{ fontWeight: 600 }}>Back Side of Dress *</label>
+                      {photoBack ? (
+                        <div style={{ position: 'relative', width: '100%', height: '140px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                          <img src={photoBack} alt="Back View" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button 
+                            type="button" 
+                            onClick={() => setPhotoBack('')}
+                            style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', backgroundColor: 'rgba(15,23,42,0.7)', border: 'none', color: '#fff', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ border: '2px dashed var(--border-light)', borderRadius: '8px', padding: '1.25rem', textAlign: 'center', backgroundColor: '#fafafa', cursor: 'pointer', position: 'relative' }}>
+                          <Upload size={20} style={{ color: 'var(--text-muted)', marginBottom: '0.375rem' }} />
+                          <span style={{ fontSize: '0.775rem', display: 'block', color: 'var(--text-muted)' }}>Tap to snap or upload</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            capture="environment"
+                            onChange={(e) => handleFileChange(e, 'back')}
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <button 
                     type="submit" 
                     className="btn btn-primary" 
-                    style={{ width: '100%', justifyContent: 'center', marginTop: '1.5rem', backgroundColor: 'var(--color-success)', borderColor: 'var(--color-success)' }}
+                    disabled={!photoFront || !photoBack}
+                    style={{ width: '100%', justifyContent: 'center', marginTop: '1rem', backgroundColor: 'var(--color-success)', borderColor: 'var(--color-success)' }}
                   >
                     <CheckCircle2 size={16} /> Complete Order & Submit
                   </button>
