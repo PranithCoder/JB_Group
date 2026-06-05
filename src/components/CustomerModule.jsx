@@ -15,6 +15,7 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
     name: '',
     contact: '',
     email: '',
+    address: '',
     preferences: '',
     notes: '',
     referralSource: '',
@@ -41,6 +42,7 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
       name: '', 
       contact: '', 
       email: '', 
+      address: '',
       preferences: '', 
       notes: '', 
       referralSource: '', 
@@ -57,6 +59,7 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
       name: cust.name,
       contact: cust.contact,
       email: cust.email || '',
+      address: cust.address || '',
       preferences: cust.preferences || '',
       notes: cust.notes || '',
       referralSource: cust.referralSource || '',
@@ -184,6 +187,11 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
                   <tr key={cust.id}>
                     <td style={{ fontWeight: 600 }}>
                       {cust.name}
+                      {cust.address && (
+                        <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '0.125rem' }}>
+                          Address: {cust.address}
+                        </div>
+                      )}
                       {cust.referralSource && (
                         <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '0.125rem' }}>
                           via {cust.referralSource} {cust.referralDetails ? `(${cust.referralDetails})` : ''}
@@ -266,6 +274,16 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
                       value={formData.email}
                       onChange={e => setFormData({ ...formData, email: e.target.value })}
                       placeholder="john@example.com"
+                    />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Address</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={formData.address}
+                      onChange={e => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="e.g. 742 Evergreen Terrace, Springfield"
                     />
                   </div>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
@@ -460,6 +478,10 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
                   <div className="detail-item">
                     <span className="detail-label">Email</span>
                     <span className="detail-val">{viewingHistory.customer.email || '—'}</span>
+                  </div>
+                  <div className="detail-item" style={{ gridColumn: 'span 2' }}>
+                    <span className="detail-label">Address</span>
+                    <span className="detail-val">{viewingHistory.customer.address || 'No address provided'}</span>
                   </div>
                   <div className="detail-item">
                     <span className="detail-label">Preferences</span>

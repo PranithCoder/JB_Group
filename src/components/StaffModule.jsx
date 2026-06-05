@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { db, TODAY_DATE } from '../lib/db';
+import { db, TODAY_DATE, DRESS_TYPES } from '../lib/db';
 import { UsersRound, Plus, Edit2, Eye, CheckCircle2, Clock, Calendar, FileText, Check, X, RefreshCw } from 'lucide-react';
 
 export default function StaffModule({ activeRole, triggerUpdate }) {
@@ -49,7 +49,9 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
     bank_name: '',
     bank_acc_number: '',
     bank_branch: '',
-    bank_passbook_link: ''
+    bank_passbook_link: '',
+    cutting_skills: [],
+    pin: '1234'
   });
 
   // Log attendance fields for the selected date
@@ -61,7 +63,10 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       initialMap[s.id] = {
         hours_worked: match ? match.hours_worked : 8,
         status: match ? match.status : 'Present',
-        leave_type: match ? match.leave_type : ''
+        leave_type: match ? match.leave_type : '',
+        start_time: match ? match.start_time : '',
+        end_time: match ? match.end_time : '',
+        short_leave_duration: match ? (match.short_leave_duration || 0) : 0
       };
     });
     return initialMap;
@@ -81,7 +86,10 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       newMap[s.id] = {
         hours_worked: match ? match.hours_worked : 8,
         status: match ? match.status : 'Present',
-        leave_type: match ? match.leave_type : ''
+        leave_type: match ? match.leave_type : '',
+        start_time: match ? match.start_time : '',
+        end_time: match ? match.end_time : '',
+        short_leave_duration: match ? (match.short_leave_duration || 0) : 0
       };
     });
     setAttendanceLog(newMap);
@@ -97,7 +105,10 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       newMap[s.id] = {
         hours_worked: match ? match.hours_worked : 8,
         status: match ? match.status : 'Present',
-        leave_type: match ? match.leave_type : ''
+        leave_type: match ? match.leave_type : '',
+        start_time: match ? match.start_time : '',
+        end_time: match ? match.end_time : '',
+        short_leave_duration: match ? (match.short_leave_duration || 0) : 0
       };
     });
     setAttendanceLog(newMap);
@@ -110,7 +121,11 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       return;
     }
     db.saveStaff({
-      ...(editingEmployee ? { id: editingEmployee.id } : {}),
+      ...(editingEmployee ? { 
+        id: editingEmployee.id,
+        leaves: editingEmployee.leaves,
+        monthly_bonuses: editingEmployee.monthly_bonuses
+      } : {}),
       name: rosterForm.name,
       contact: rosterForm.contact,
       role: rosterForm.role,
@@ -132,7 +147,9 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       bank_name: rosterForm.bank_name,
       bank_acc_number: rosterForm.bank_acc_number,
       bank_branch: rosterForm.bank_branch,
-      bank_passbook_link: rosterForm.bank_passbook_link
+      bank_passbook_link: rosterForm.bank_passbook_link,
+      cutting_skills: rosterForm.cutting_skills || [],
+      pin: rosterForm.pin || '1234'
     });
     setShowRosterModal(false);
     refreshData();
@@ -162,7 +179,9 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       bank_name: '',
       bank_acc_number: '',
       bank_branch: '',
-      bank_passbook_link: ''
+      bank_passbook_link: '',
+      cutting_skills: [],
+      pin: '1234'
     });
     setEditingEmployee(null);
     setShowRosterModal(true);
@@ -191,7 +210,9 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       bank_name: emp.bank_name || '',
       bank_acc_number: emp.bank_acc_number || '',
       bank_branch: emp.bank_branch || '',
-      bank_passbook_link: emp.bank_passbook_link || ''
+      bank_passbook_link: emp.bank_passbook_link || '',
+      cutting_skills: emp.cutting_skills || [],
+      pin: emp.pin || '1234'
     });
     setEditingEmployee(emp);
     setShowRosterModal(true);
@@ -205,16 +226,24 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       if (field === 'hours_worked') {
         const hours = Number(value);
         updatedItem.status = hours > 0 ? 'Present' : 'Absent';
-        if (hours > 0) updatedItem.leave_type = '';
+        if (hours > 0) {
+          updatedItem.leave_type = '';
+          updatedItem.start_time = updatedItem.start_time || '08:30';
+          updatedItem.end_time = updatedItem.end_time || '';
+        }
       }
       
       if (field === 'status') {
         if (value === 'Absent') {
           updatedItem.hours_worked = 0;
           updatedItem.leave_type = 'sick'; // Default leave tag
+          updatedItem.start_time = '';
+          updatedItem.end_time = '';
         } else {
           updatedItem.hours_worked = 8;
           updatedItem.leave_type = '';
+          updatedItem.start_time = updatedItem.start_time || '08:30';
+          updatedItem.end_time = updatedItem.end_time || '';
         }
       }
 
@@ -231,7 +260,10 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         date: selectedDate,
         hours_worked: Number(log.hours_worked),
         status: log.status,
-        leave_type: log.status === 'Absent' ? log.leave_type : ''
+        leave_type: log.status === 'Absent' ? log.leave_type : '',
+        start_time: log.start_time || '',
+        end_time: log.end_time || '',
+        short_leave_duration: Number(log.short_leave_duration || 0)
       });
       successCount++;
     });
@@ -246,14 +278,16 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
     const refDate = new Date(TODAY_DATE);
 
     return staffList.map(s => {
-      // Filter orders assigned to this staff member and completed or delivered
-      const staffOrders = ordersList.filter(o => o.assigned_staff_id === s.id && (o.status === 'completed' || o.status === 'delivered'));
+      // Filter orders where this staff did stitching or cutting
+      const stitchedOrders = ordersList.filter(o => o.assigned_staff_id === s.id && (o.status === 'completed' || o.status === 'delivered'));
+      const cutOrders = ordersList.filter(o => o.cutting_staff_id === s.id && (o.status === 'completed' || o.status === 'delivered'));
 
       let dailyCount = 0;
       let weeklyCount = 0;
       let monthlyCount = 0;
 
-      staffOrders.forEach(o => {
+      // Track daily/weekly/monthly metrics for stitching
+      stitchedOrders.forEach(o => {
         const compDateStr = o.completed_date || o.delivery_date;
         if (!compDateStr) return;
         
@@ -261,17 +295,21 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         const diffTime = refDate - compDate;
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
-        // Daily (completed today)
-        if (compDateStr === TODAY_DATE) {
-          dailyCount++;
-        }
-        // Weekly (completed in last 7 days)
-        if (diffDays >= 0 && diffDays <= 7) {
-          weeklyCount++;
-        }
-        // Monthly (completed in last 30 days)
-        if (diffDays >= 0 && diffDays <= 30) {
-          monthlyCount++;
+        if (compDateStr === TODAY_DATE) dailyCount++;
+        if (diffDays >= 0 && diffDays <= 7) weeklyCount++;
+        if (diffDays >= 0 && diffDays <= 30) monthlyCount++;
+      });
+
+      // Track commission
+      let totalCommission = 0;
+      ordersList.forEach(o => {
+        if (o.status === 'completed' || o.status === 'delivered') {
+          if (o.cutting_staff_id === s.id) {
+            totalCommission += o.amount * 0.5 * 0.3;
+          }
+          if (o.assigned_staff_id === s.id) {
+            totalCommission += o.amount * 0.5 * 0.3;
+          }
         }
       });
 
@@ -282,13 +320,33 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         daily: dailyCount,
         weekly: weeklyCount,
         monthly: monthlyCount,
-        total: staffOrders.length
+        stitched_total: stitchedOrders.length,
+        cut_total: cutOrders.length,
+        commission: totalCommission
       };
     });
   };
 
   const calculatedPayroll = db.generateMonthlyPayroll(selectedMonth);
   const isReadOnly = activeRole === 'boss';
+
+  const handleBonusChange = (staffId, amount) => {
+    const numericAmount = amount === '' ? 0 : Number(amount);
+    const emp = staff.find(s => s.id === staffId);
+    if (!emp) return;
+
+    const monthly_bonuses = { ...(emp.monthly_bonuses || {}) };
+    if (amount === '') {
+      delete monthly_bonuses[selectedMonth];
+    } else {
+      monthly_bonuses[selectedMonth] = numericAmount;
+    }
+
+    const updated = { ...emp, monthly_bonuses };
+    db.saveStaff(updated);
+    refreshData();
+    triggerUpdate();
+  };
 
   return (
     <div className="card">
@@ -307,7 +365,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       <div className="card-body">
         {/* Tab Buttons */}
         <div className="toolbar" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
-          <div style={{ display: 'flex', gap: '0.375rem' }}>
+          <div className="tab-switcher transparent" style={{ gap: '0.375rem' }}>
             <button 
               className={`role-btn ${activeTab === 'roster' ? 'active' : ''}`}
               onClick={() => setActiveTab('roster')}
@@ -346,6 +404,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                 <tr>
                   <th>Employee</th>
                   <th>Designation / Role</th>
+                  <th>Cutting Skills</th>
                   <th>Join Date</th>
                   <th>Monthly Salary</th>
                   <th>Sick Leaves Taken</th>
@@ -362,7 +421,29 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.contact}</div>
                     </td>
                     <td>
-                      <span className="badge info">{emp.role}</span>
+                      <div className="badge info">{emp.role}</div>
+                      {emp.role !== 'Store Assistant' && (
+                        <div style={{ fontSize: '0.75rem', marginTop: '0.25rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                          PIN: {emp.pin || '1234'}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {emp.role === 'Store Assistant' ? (
+                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                      ) : emp.cutting_skills && emp.cutting_skills.length > 0 ? (
+                        emp.cutting_skills.length === DRESS_TYPES.length ? (
+                          <span className="badge success" style={{ fontWeight: 600 }}>Master Cutter (All)</span>
+                        ) : (
+                          <span className="badge info" style={{ backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)', fontWeight: 600 }}>
+                            Cuts {emp.cutting_skills.length} types
+                          </span>
+                        )
+                      ) : (
+                        <span className="badge danger" style={{ fontWeight: 600 }}>
+                          Stitching Only
+                        </span>
+                      )}
                     </td>
                     <td>{emp.join_date}</td>
                     <td style={{ fontWeight: 600 }}>Rs. {Number(emp.salary || 0).toFixed(2)}</td>
@@ -412,18 +493,39 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                   <tr>
                     <th>Employee Name</th>
                     <th>Role</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
                     <th>Hours Worked</th>
+                    <th>Short Leave (hrs)</th>
                     <th>Attendance Status</th>
                     <th>Leave Tag (if Absent)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {staff.map(emp => {
-                    const log = attendanceLog[emp.id] || { hours_worked: 8, status: 'Present', leave_type: '' };
+                    const log = attendanceLog[emp.id] || { hours_worked: 8, status: 'Present', leave_type: '', start_time: '', end_time: '', short_leave_duration: 0 };
                     return (
                       <tr key={emp.id}>
                         <td style={{ fontWeight: 600 }}>{emp.name}</td>
                         <td><span className="badge info">{emp.role}</span></td>
+                        <td>
+                          {log.status === 'Present' ? (
+                            <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
+                              {log.start_time || '08:30'}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          )}
+                        </td>
+                        <td>
+                          {log.status === 'Present' ? (
+                            <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
+                              {log.end_time || '—'}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          )}
+                        </td>
                         <td>
                           <input 
                             type="number"
@@ -435,6 +537,15 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                             value={log.hours_worked}
                             onChange={e => handleAttendanceChange(emp.id, 'hours_worked', e.target.value)}
                           />
+                        </td>
+                        <td>
+                          {log.status === 'Present' ? (
+                            <span style={{ fontWeight: 600, color: 'var(--color-warning)' }}>
+                              {log.short_leave_duration ? `${log.short_leave_duration} hrs` : '0 hrs'}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          )}
                         </td>
                         <td>
                           <select
@@ -511,6 +622,8 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                     <th>Overtime Hrs</th>
                     <th>Present / Absent Days</th>
                     <th>Deductions</th>
+                    <th>Bonus</th>
+                    <th>Commissions</th>
                     <th>Net Calculated Pay</th>
                     <th>Actions</th>
                   </tr>
@@ -533,7 +646,31 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                         <span className="text-green">{sheet.days_present} present</span> / <span className="text-red">{sheet.days_absent} absent</span>
                       </td>
                       <td className={sheet.deductions > 0 ? 'text-red' : ''}>-Rs. {Number(sheet.deductions || 0).toFixed(2)}</td>
-  <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>Rs. {Number(sheet.net_pay || 0).toFixed(2)}</td>
+                      <td>
+                        <input 
+                          type="number" 
+                          min="0"
+                          disabled={isReadOnly}
+                          className="form-input" 
+                          style={{ width: '90px', padding: '0.375rem 0.5rem' }} 
+                          value={sheet.bonus || ''} 
+                          onChange={e => handleBonusChange(sheet.staff_id, e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </td>
+                      <td>
+                        {sheet.role !== 'Store Assistant' ? (
+                          <div style={{ fontWeight: 600, color: 'var(--color-success)', fontSize: '0.85rem' }}>
+                            Rs. {Number(sheet.commission || 0).toFixed(2)}
+                            <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '0.125rem' }}>
+                              (Cut: {Number(sheet.cutting_commission || 0).toFixed(0)} | Stitch: {Number(sheet.stitching_commission || 0).toFixed(0)})
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>Rs. {Number(sheet.net_pay || 0).toFixed(2)}</td>
                       <td>
                         <button className="btn btn-secondary btn-sm" onClick={() => setViewingPayslip(sheet)}>
                           <FileText size={14} /> View Slip
@@ -568,11 +705,12 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                   <tr>
                     <th>Tailor Details</th>
                     <th>Role / Designation</th>
-                    <th style={{ textAlign: 'center' }}>Daily Finished</th>
-                    <th style={{ textAlign: 'center' }}>Weekly Finished</th>
-                    <th style={{ textAlign: 'center' }}>Monthly Finished</th>
-                    <th style={{ textAlign: 'center' }}>Total Completed</th>
-                    <th>Weekly Efficiency Rating</th>
+                    <th style={{ textAlign: 'center' }}>Daily Stitched</th>
+                    <th style={{ textAlign: 'center' }}>Weekly Stitched</th>
+                    <th style={{ textAlign: 'center' }}>Monthly Stitched</th>
+                    <th>Total Jobs</th>
+                    <th style={{ fontWeight: 700, color: 'var(--color-success)' }}>Commissions (LKR)</th>
+                    <th>Weekly Efficiency</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -589,7 +727,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                     } else if (tailor.weekly >= 3) {
                       rating = 'Good';
                       ratingColor = 'var(--color-primary)';
-                    } else if (tailor.total === 0) {
+                    } else if (tailor.stitched_total === 0 && tailor.cut_total === 0) {
                       rating = 'Inactive';
                       ratingColor = '#cbd5e1';
                     }
@@ -618,14 +756,22 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                             {tailor.monthly}
                           </span>
                         </td>
-                        <td style={{ textAlign: 'center', fontWeight: 700 }}>
-                          {tailor.total} orders
+                        <td>
+                          <div style={{ fontSize: '0.825rem' }}>
+                            <strong>Stitched:</strong> {tailor.stitched_total}
+                          </div>
+                          <div style={{ fontSize: '0.825rem', marginTop: '0.125rem' }}>
+                            <strong>Cut:</strong> {tailor.cut_total}
+                          </div>
+                        </td>
+                        <td style={{ fontWeight: 700, color: 'var(--color-success)' }}>
+                          Rs. {Number(tailor.commission || 0).toFixed(2)}
                         </td>
                         <td>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '150px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '130px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.725rem' }}>
                               <span style={{ color: ratingColor === 'var(--text-muted)' ? 'inherit' : ratingColor, fontWeight: 600 }}>{rating}</span>
-                              <span style={{ color: 'var(--text-muted)' }}>{pct}% of target</span>
+                              <span style={{ color: 'var(--text-muted)' }}>{pct}%</span>
                             </div>
                             <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
                               <div style={{ width: `${pct}%`, height: '100%', backgroundColor: ratingColor === 'var(--text-muted)' ? 'var(--color-warning)' : ratingColor, borderRadius: '3px' }}></div>
@@ -788,7 +934,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                   <h4 style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>
                     2. Job Details
                   </h4>
-                  <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                  <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                     <div className="form-group">
                       <label className="form-label">Designation / Role</label>
                       <select 
@@ -822,8 +968,86 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                         onChange={e => setRosterForm({ ...rosterForm, join_date: e.target.value })}
                       />
                     </div>
+                    <div className="form-group">
+                      <label className="form-label">Security PIN (4 digits) *</label>
+                      <input 
+                        type="text"
+                        pattern="[0-9]{4}"
+                        maxLength="4"
+                        className="form-input"
+                        required
+                        value={rosterForm.pin || '1234'}
+                        onChange={e => setRosterForm({ ...rosterForm, pin: e.target.value.replace(/[^0-9]/g, '') })}
+                        placeholder="1234"
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* Cutting Capabilities Checklist */}
+                {rosterForm.role !== 'Store Assistant' && (
+                  <div style={{ marginTop: '1.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
+                      <h4 style={{ color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)', fontWeight: 700, margin: 0, fontSize: '1.05rem' }}>
+                        Cutting Capabilities by Dress Type
+                      </h4>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary btn-sm" 
+                          onClick={() => setRosterForm({ ...rosterForm, cutting_skills: DRESS_TYPES })}
+                          style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: 'auto' }}
+                        >
+                          Select All
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary btn-sm" 
+                          onClick={() => setRosterForm({ ...rosterForm, cutting_skills: [] })}
+                          style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: 'auto' }}
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                      Check all dress types this tailor can cut. If they claim an order type they cannot cut, they must assign a cutting-capable tailor.
+                    </p>
+                    
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+                      gap: '0.5rem', 
+                      maxHeight: '140px', 
+                      overflowY: 'auto', 
+                      padding: '0.75rem', 
+                      backgroundColor: '#f8fafc', 
+                      border: '1px solid var(--border-light)', 
+                      borderRadius: 'var(--radius-md)' 
+                    }}>
+                      {DRESS_TYPES.map(dt => {
+                        const isChecked = rosterForm.cutting_skills?.includes(dt);
+                        return (
+                          <label key={dt} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', textTransform: 'capitalize' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                const updatedSkills = checked 
+                                  ? [...(rosterForm.cutting_skills || []), dt] 
+                                  : (rosterForm.cutting_skills || []).filter(s => s !== dt);
+                                setRosterForm({ ...rosterForm, cutting_skills: updatedSkills });
+                              }}
+                            />
+                            {dt}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* 3. Emergency Contact Details */}
                 <div>
@@ -988,6 +1212,22 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                   <span>Leave Deductions:</span>
                   <span className="text-red">-Rs. {Number(viewingPayslip.deductions || 0).toFixed(2)}</span>
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Bonus Additions:</span>
+                  <span className="text-green">+Rs. {Number(viewingPayslip.bonus || 0).toFixed(2)}</span>
+                </div>
+                {viewingPayslip.role !== 'Store Assistant' && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Cutting Commission:</span>
+                      <span className="text-green">+Rs. {Number(viewingPayslip.cutting_commission || 0).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Stitching Commission:</span>
+                      <span className="text-green">+Rs. {Number(viewingPayslip.stitching_commission || 0).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-primary)' }}>
@@ -1131,6 +1371,16 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                         <span style={{ color: 'var(--text-muted)' }}>Vacation Leaves Left:</span>
                         <span style={{ fontWeight: 500 }}>{viewingEmployeeDetails.leaves?.vacation ?? 15} days</span>
                       </div>
+                      {viewingEmployeeDetails.role !== 'Store Assistant' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-light)' }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>CUTTING CAPABILITIES</span>
+                          <span style={{ fontWeight: 500, fontSize: '0.8rem', textTransform: 'capitalize', color: 'var(--text-primary)', lineHeight: 1.4, maxHeight: '60px', overflowY: 'auto', display: 'block' }}>
+                            {viewingEmployeeDetails.cutting_skills && viewingEmployeeDetails.cutting_skills.length > 0 ? (
+                              viewingEmployeeDetails.cutting_skills.length === DRESS_TYPES.length ? 'Master Cutter (All dress types)' : viewingEmployeeDetails.cutting_skills.join(', ')
+                            ) : 'Stitching Only (No cutting capabilities)'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

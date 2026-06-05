@@ -18,10 +18,13 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   const [viewingCustomer, setViewingCustomer] = useState(null);
   const [completedFromDate, setCompletedFromDate] = useState(TODAY_DATE);
   const [completedToDate, setCompletedToDate] = useState(TODAY_DATE);
+  const [viewingPhotos, setViewingPhotos] = useState(null);
 
   const [formData, setFormData] = useState({
     customer_id: '',
     delivery_date: '',
+    delivery_time: '17:00',
+    is_urgent: false,
     service_type: 'Stitching',
     dress_type: 'modern dress (Custom)',
     note: '',
@@ -30,6 +33,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     payment_status: 'unpaid',
     amount_paid: '',
     assigned_staff_id: '',
+    cutting_staff_id: '',
+    cutting_status: 'pending',
     bill_no: ''
   });
 
@@ -87,6 +92,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     setFormData({
       customer_id: '',
       delivery_date: TODAY_DATE, // Default to today
+      delivery_time: '17:00',
+      is_urgent: false,
       service_type: 'Stitching',
       dress_type: 'modern dress (Custom)',
       note: '',
@@ -95,6 +102,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       payment_status: 'unpaid',
       amount_paid: '',
       assigned_staff_id: '',
+      cutting_staff_id: '',
+      cutting_status: 'pending',
       bill_no: ''
     });
     setCustSearch('');
@@ -107,6 +116,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     setFormData({
       customer_id: order.customer_id,
       delivery_date: order.delivery_date,
+      delivery_time: order.delivery_time || '17:00',
+      is_urgent: !!order.is_urgent,
       service_type: order.service_type,
       dress_type: order.dress_type || 'modern dress (Custom)',
       note: order.note || '',
@@ -115,6 +126,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       payment_status: order.payment_status,
       amount_paid: order.amount_paid !== undefined ? order.amount_paid : (order.payment_status === 'paid' ? order.amount : 0),
       assigned_staff_id: order.assigned_staff_id || '',
+      cutting_staff_id: order.cutting_staff_id || '',
+      cutting_status: order.cutting_status || 'pending',
       bill_no: order.bill_no || ''
     });
     setCustSearch(matchingCust ? `${matchingCust.name} (${matchingCust.contact})` : '');
@@ -127,10 +140,6 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     try {
       if (!formData.customer_id) {
         alert('Please search and select a valid customer from the dropdown list.');
-        return;
-      }
-      if (!formData.assigned_staff_id) {
-        alert('Please select and assign a tailor to this order.');
         return;
       }
       if (!formData.delivery_date || !formData.amount) {
@@ -168,6 +177,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         ...(editingOrder ? { id: editingOrder.id } : {}),
         customer_id: formData.customer_id,
         delivery_date: formData.delivery_date,
+        delivery_time: formData.delivery_time || '17:00',
+        is_urgent: !!formData.is_urgent,
         service_type: formData.service_type,
         dress_type: formData.dress_type,
         note: formData.note,
@@ -176,6 +187,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         payment_status: finalPaymentStatus,
         amount_paid: finalAmountPaid,
         assigned_staff_id: formData.assigned_staff_id,
+        cutting_staff_id: formData.cutting_staff_id || '',
+        cutting_status: formData.cutting_status || 'pending',
         bill_no: formData.bill_no
       };
 
@@ -329,7 +342,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
           </div>
 
           <div className="filter-actions">
-            <div style={{ display: 'flex', gap: '0.25rem', backgroundColor: '#f1f5f9', padding: '0.25rem', borderRadius: '8px' }}>
+            <div className="role-switcher">
               <button 
                 onClick={() => setStatusFilter('all')}
                 className={`role-btn ${statusFilter === 'all' ? 'active' : ''}`}
@@ -462,9 +475,15 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                   }
 
                   return (
-                    <tr key={ord.id} style={{ backgroundColor: isOverdue(ord) ? 'var(--color-danger-light)' : 'inherit' }}>
+                    <tr key={ord.id} style={{ 
+                      backgroundColor: ord.is_urgent ? '#fef2f2' : (isOverdue(ord) ? 'var(--color-danger-light)' : 'inherit'),
+                      borderLeft: ord.is_urgent ? '4px solid var(--color-danger)' : 'none'
+                    }}>
                       <td style={{ fontWeight: 600 }}>
-                        <div>{ord.order_no}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                          {ord.is_urgent && <span style={{ color: 'var(--color-danger)', fontWeight: 'bold' }}>⚡</span>}
+                          <span>{ord.order_no}</span>
+                        </div>
                         {ord.bill_no && (
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                             Bill: {ord.bill_no}
@@ -497,9 +516,14 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       </td>
                       <td>{ord.order_date}</td>
                       <td className={styleClass} style={{ fontWeight: styleClass ? '600' : 'normal' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                          <Calendar size={14} />
-                          <span>{dueLabel}</span>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.375rem' }}>
+                          <Calendar size={14} style={{ marginTop: '0.125rem' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span>{dueLabel}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                              Time: {ord.delivery_time || '17:00'}
+                            </span>
+                          </div>
                         </div>
                       </td>
                       <td>
@@ -509,17 +533,44 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                         </div>
                       </td>
                       <td>
-                        {ord.assignedStaff ? (
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{ord.assignedStaff.name}</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{ord.assignedStaff.role}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                          <div style={{ fontSize: '0.825rem' }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.725rem', fontWeight: 600 }}>Cut:</span>{' '}
+                            {ord.cuttingStaff ? (
+                              <span>
+                                <strong>{ord.cuttingStaff.name}</strong>
+                                <span className={`badge ${ord.cutting_status === 'completed' ? 'success' : 'warning'}`} style={{ fontSize: '0.625rem', padding: '0.05rem 0.25rem', marginLeft: '0.25rem', display: 'inline-flex', transform: 'scale(0.9)' }}>
+                                  {ord.cutting_status}
+                                </span>
+                              </span>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Unassigned</span>
+                            )}
                           </div>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Unassigned</span>
-                        )}
+                          <div style={{ fontSize: '0.825rem' }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.725rem', fontWeight: 600 }}>Stitch:</span>{' '}
+                            {ord.assignedStaff ? (
+                              <strong>{ord.assignedStaff.name}</strong>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Unassigned</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ord.note}>
-                        {ord.note || '—'}
+                        <div>{ord.note || '—'}</div>
+                        {(ord.photo_front || ord.photo_back) && (
+                          <div style={{ marginTop: '0.25rem' }}>
+                            <button 
+                              type="button" 
+                              className="btn btn-secondary btn-sm" 
+                              style={{ padding: '0.1rem 0.35rem', fontSize: '0.675rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', borderColor: 'var(--color-success)', color: 'var(--color-success)', background: 'var(--color-success-light)' }} 
+                              onClick={() => setViewingPhotos(ord)}
+                            >
+                              🖼️ View Photos
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td style={{ fontWeight: 600 }}>Rs. {Number(ord.amount || 0).toFixed(2)}</td>
                       <td>
@@ -699,14 +750,13 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Assign Tailor *</label>
+                    <label className="form-label">Assign Tailor (Optional)</label>
                     <select 
                       className="form-select"
-                      required
                       value={formData.assigned_staff_id}
                       onChange={e => setFormData({ ...formData, assigned_staff_id: e.target.value })}
                     >
-                      <option value="" disabled>Select tailor/staff...</option>
+                      <option value="">Unassigned / Pending Pickup</option>
                       {db.getStaff().map(s => (
                         <option key={s.id} value={s.id}>
                           {s.name} ({s.role})
@@ -737,6 +787,28 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       value={formData.delivery_date}
                       onChange={e => setFormData({ ...formData, delivery_date: e.target.value })}
                     />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Delivery Due Time *</label>
+                    <input 
+                      type="time"
+                      className="form-input"
+                      required
+                      value={formData.delivery_time || '17:00'}
+                      onChange={e => setFormData({ ...formData, delivery_time: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
+                    <input 
+                      type="checkbox"
+                      id="is_urgent"
+                      checked={formData.is_urgent || false}
+                      onChange={e => setFormData({ ...formData, is_urgent: e.target.checked })}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="is_urgent" className="form-label" style={{ margin: 0, cursor: 'pointer', fontWeight: 600, color: 'var(--color-danger)' }}>
+                      Urgent Needed ⚡
+                    </label>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Written Bill Number</label>
@@ -1154,6 +1226,50 @@ Thank you for choosing JB Groups Tailoring Shop!`;
           </div>
         );
       })()}
+      {/* View Dress Photos Modal */}
+      {viewingPhotos && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3>Dress Photos: {viewingPhotos.order_no}</h3>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setViewingPhotos(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', textAlign: 'center' }}>
+                <div>
+                  <h4 style={{ marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-muted)' }}>FRONT VIEW</h4>
+                  {viewingPhotos.photo_front ? (
+                    <img 
+                      src={viewingPhotos.photo_front} 
+                      alt="Front View" 
+                      style={{ width: '100%', maxHeight: '350px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }} 
+                    />
+                  ) : (
+                    <div style={{ padding: '3rem 1rem', backgroundColor: '#f1f5f9', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No image uploaded</div>
+                  )}
+                </div>
+                <div>
+                  <h4 style={{ marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-muted)' }}>BACK VIEW</h4>
+                  {viewingPhotos.photo_back ? (
+                    <img 
+                      src={viewingPhotos.photo_back} 
+                      alt="Back View" 
+                      style={{ width: '100%', maxHeight: '350px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }} 
+                    />
+                  ) : (
+                    <div style={{ padding: '3rem 1rem', backgroundColor: '#f1f5f9', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No image uploaded</div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setViewingPhotos(null)}>Close View</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

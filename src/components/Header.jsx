@@ -1,8 +1,8 @@
 import React from 'react';
 import { db } from '../lib/db';
-import { User, ShieldAlert, Sparkles, Download } from 'lucide-react';
+import { User, ShieldAlert, Sparkles, Download, Menu, LogOut } from 'lucide-react';
 
-export default function Header({ activeRole, onRoleChange, currentSection }) {
+export default function Header({ activeRole, onRoleChange, currentSection, onMenuToggle, onExitPortal, portalView }) {
   const getRoleBadge = (role) => {
     switch (role) {
       case 'officer':
@@ -13,6 +13,8 @@ export default function Header({ activeRole, onRoleChange, currentSection }) {
         return { label: 'Boss (Read-Only)', bg: '#f3e8ff', text: '#7c3aed', desc: 'Summary dashboard of all modules. View-only.' };
       case 'super_admin':
         return { label: 'Super-Admin', bg: '#fee2e2', text: '#dc2626', desc: 'Full root access. Override controls & audit' };
+      case 'tailor':
+        return { label: 'Tailor Station', bg: '#ecfdf5', text: '#059669', desc: 'Manage your daily work shifts and pick up orders' };
       default:
         return { label: role, bg: '#f1f5f9', text: '#64748b', desc: '' };
     }
@@ -28,48 +30,57 @@ export default function Header({ activeRole, onRoleChange, currentSection }) {
     inventory: 'Inventory Catalog & Accounts',
     complaints: 'Complaint Resolution Tickets',
     approvals: 'Manager Approval Queue',
-    audit: 'System Audit Logs'
+    audit: 'System Audit Logs',
+    tailor_dashboard: 'Tailor Workstation'
   };
 
   return (
     <header className="app-header">
       <div className="header-title-section">
-        <h1>{sectionTitles[currentSection] || 'JB Groups Tailor'}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button 
+            className="btn btn-secondary mobile-menu-toggle"
+            onClick={onMenuToggle}
+            style={{ 
+              display: 'none', 
+              padding: '0.5rem', 
+              borderRadius: 'var(--radius-md)', 
+              borderColor: 'var(--border-light)' 
+            }}
+            title="Toggle Menu"
+          >
+            <Menu size={20} />
+          </button>
+          <h1>{sectionTitles[currentSection] || 'JB Groups Tailor'}</h1>
+        </div>
         <p>{roleInfo.desc}</p>
       </div>
 
       <div className="header-actions">
-        {/* Role Switcher Toolbar */}
-        <div className="role-switcher">
+
+
+        {/* Exit Portal Button */}
+        {onExitPortal && activeRole !== 'tailor' && (
           <button 
-            className={`role-btn ${activeRole === 'officer' ? 'active' : ''}`}
-            onClick={() => onRoleChange('officer')}
-            title="Switch to Admin Officer view"
+            className="btn btn-secondary btn-sm"
+            onClick={onExitPortal}
+            style={{ 
+              padding: '0.375rem 0.625rem', 
+              border: '1px solid var(--color-danger)', 
+              color: 'var(--color-danger)', 
+              fontSize: '0.75rem', 
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              backgroundColor: 'transparent'
+            }}
+            title="Log out and return to the main welcome portal"
           >
-            Officer
+            <LogOut size={12} />
+            Exit Portal
           </button>
-          <button 
-            className={`role-btn ${activeRole === 'manager' ? 'active' : ''}`}
-            onClick={() => onRoleChange('manager')}
-            title="Switch to Manager view"
-          >
-            Manager
-          </button>
-          <button 
-            className={`role-btn ${activeRole === 'boss' ? 'active' : ''}`}
-            onClick={() => onRoleChange('boss')}
-            title="Switch to Boss (Read-Only) view"
-          >
-            Boss
-          </button>
-          <button 
-            className={`role-btn ${activeRole === 'super_admin' ? 'active' : ''}`}
-            onClick={() => onRoleChange('super_admin')}
-            title="Switch to Super-Admin view"
-          >
-            Owner
-          </button>
-        </div>
+        )}
 
         {/* Reset Database Button (Super-Admin only) */}
         {activeRole === 'super_admin' && (
@@ -89,7 +100,7 @@ export default function Header({ activeRole, onRoleChange, currentSection }) {
         )}
 
         {/* Download Backup Button (Visible to Manager, Boss, Owner) */}
-        {activeRole !== 'officer' && (
+        {activeRole !== 'officer' && activeRole !== 'tailor' && (
           <button 
             className="btn btn-secondary btn-sm"
             onClick={() => db.downloadBackup()}
@@ -128,7 +139,9 @@ export default function Header({ activeRole, onRoleChange, currentSection }) {
             <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)' }}>
               {activeRole === 'officer' ? 'Alina Officer' : 
                activeRole === 'manager' ? 'Marcus Manager' :
-               activeRole === 'boss' ? 'Brenda Boss' : 'Sam Super'}
+               activeRole === 'boss' ? 'Brenda Boss' :
+               activeRole === 'tailor' ? (db.getStaff().find(s => s.id === localStorage.getItem('jb_active_tailor_id'))?.name || 'Select Profile') :
+               'Sam Super'}
             </span>
             <span style={{ 
               fontSize: '0.7rem', 

@@ -11,7 +11,8 @@ import {
   Scissors,
   ShoppingCart,
   MapPin,
-  Phone
+  Phone,
+  X
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -20,7 +21,9 @@ export default function Sidebar({
   activeRole, 
   pendingApprovalsCount, 
   lowStockCount,
-  openComplaintsCount 
+  openComplaintsCount,
+  isOpen,
+  onCloseSidebar
 }) {
   
   // Define menu items with visibility logic
@@ -30,6 +33,12 @@ export default function Sidebar({
       label: 'Dashboard', 
       icon: LayoutDashboard, 
       roles: ['officer', 'manager', 'boss', 'super_admin'] 
+    },
+    { 
+      id: 'tailor_dashboard', 
+      label: 'Tailor Station', 
+      icon: Scissors, 
+      roles: ['tailor'] 
     },
     { 
       id: 'customers', 
@@ -102,10 +111,37 @@ export default function Sidebar({
   const visibleItems = menuItems.filter(item => item.roles.includes(activeRole));
 
   return (
-    <aside className="app-sidebar">
-      <div className="sidebar-header">
-        <Scissors size={24} style={{ color: '#3b82f6' }} />
-        <span className="sidebar-logo">JB GROUPS</span>
+    <>
+      {isOpen && (
+        <div 
+          className="sidebar-backdrop" 
+          onClick={onCloseSidebar}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            backdropFilter: 'blur(2px)',
+            zIndex: 40
+          }}
+        />
+      )}
+      <aside className={`app-sidebar ${isOpen ? 'open' : ''}`}>
+      <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Scissors size={24} style={{ color: '#3b82f6' }} />
+          <span className="sidebar-logo">JB GROUPS</span>
+        </div>
+        <button 
+          className="mobile-close-btn"
+          onClick={onCloseSidebar}
+          title="Close Sidebar"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <X size={20} />
+        </button>
       </div>
 
       <nav className="sidebar-menu">
@@ -115,7 +151,10 @@ export default function Sidebar({
           return (
             <button
               key={item.id}
-              onClick={() => setCurrentSection(item.id)}
+              onClick={() => {
+                setCurrentSection(item.id);
+                if (onCloseSidebar) onCloseSidebar();
+              }}
               className={`sidebar-item ${isActive ? 'active' : ''}`}
               style={{ background: 'transparent', border: 'none', width: '100%', textAlign: 'left' }}
             >
@@ -138,5 +177,6 @@ export default function Sidebar({
         <div style={{ fontSize: '0.675rem', marginTop: '0.25rem' }}>v1.0.0 • Supabase RLS</div>
       </div>
     </aside>
+    </>
   );
 }

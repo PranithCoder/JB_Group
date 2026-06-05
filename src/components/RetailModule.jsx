@@ -190,7 +190,7 @@ export default function RetailModule({ activeRole, triggerUpdate }) {
 
         {/* Tab Toolbar */}
         <div className="toolbar" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
-          <div style={{ display: 'flex', gap: '0.375rem' }}>
+          <div className="tab-switcher" style={{ gap: '0.375rem' }}>
             <button 
               className={`role-btn ${activeTab === 'catalog' ? 'active' : ''}`}
               onClick={() => setActiveTab('catalog')}

@@ -64,7 +64,7 @@ export default function ApprovalQueue({ activeRole, triggerUpdate }) {
                     <tr key={app.id}>
                       <td style={{ fontWeight: 600 }}>{app.id}</td>
                       <td style={{ fontWeight: 600 }}>{app.request_type}</td>
-                      <td>Alina Officer</td>
+                      <td>{app.requested_by_name || 'Alina Officer'}</td>
                       <td>{app.request_date}</td>
                       <td style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>{app.details}</td>
                       <td>

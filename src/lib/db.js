@@ -38,11 +38,11 @@ const DEFAULT_USERS = [
 ];
 
 const DEFAULT_CUSTOMERS = [
-  { id: 'c-1', name: 'Eleanor Vance', contact: '+1 (555) 019-2834', email: 'eleanor.v@mail.com', preferences: 'Stitching - Silk Dress, Prefers loose fit, high neckline', notes: 'Frequent customer for formal wear.', serviceHistoryCount: 4, status: 'Active', referralSource: 'Social Media', referralDetails: 'Instagram' },
-  { id: 'c-2', name: 'Jonathan Archer', contact: '+1 (555) 014-9922', email: 'j.archer@enterprise.org', preferences: 'Alteration - Wool Suits, Waist adjustment -0.5 inch', notes: 'Prefers express delivery.', serviceHistoryCount: 8, status: 'Active', referralSource: 'In-Person Visit', referralDetails: 'Walk-in / Signboard' },
-  { id: 'c-3', name: 'Seraphina Pekkala', contact: '+1 (555) 017-8811', email: 'seraphina@witch.net', preferences: 'Stitching - Custom Cloak, Lightweight fabrics, long hem', notes: 'Prefers cotton-linen blends.', serviceHistoryCount: 3, status: 'Active', referralSource: 'Customer Referral', referralDetails: 'Eleanor Vance' },
-  { id: 'c-4', name: 'Clara Oswald', contact: '+1 (555) 012-3344', email: 'clara.oswald@tardis.co', preferences: 'Alteration - Jackets, Sleeve shortening', notes: 'Paid on time always.', serviceHistoryCount: 6, status: 'Active', referralSource: 'Social Media', referralDetails: 'Facebook' },
-  { id: 'c-5', name: 'Bruce Wayne', contact: '+1 (555) 019-9999', email: 'bruce@waynecorp.com', preferences: 'Stitching - Premium Black Suit, Heavy-duty lining, custom pockets', notes: 'Extremely high value client. Demands total discretion.', serviceHistoryCount: 12, status: 'Active', referralSource: 'Other', referralDetails: 'Secret invitation' }
+  { id: 'c-1', name: 'Eleanor Vance', contact: '+1 (555) 019-2834', email: 'eleanor.v@mail.com', address: '742 Evergreen Terrace, Springfield', preferences: 'Stitching - Silk Dress, Prefers loose fit, high neckline', notes: 'Frequent customer for formal wear.', serviceHistoryCount: 4, status: 'Active', referralSource: 'Social Media', referralDetails: 'Instagram' },
+  { id: 'c-2', name: 'Jonathan Archer', contact: '+1 (555) 014-9922', email: 'j.archer@enterprise.org', address: 'Starfleet Command, San Francisco', preferences: 'Alteration - Wool Suits, Waist adjustment -0.5 inch', notes: 'Prefers express delivery.', serviceHistoryCount: 8, status: 'Active', referralSource: 'In-Person Visit', referralDetails: 'Walk-in / Signboard' },
+  { id: 'c-3', name: 'Seraphina Pekkala', contact: '+1 (555) 017-8811', email: 'seraphina@witch.net', address: 'Lake Enara, Lapland', preferences: 'Stitching - Custom Cloak, Lightweight fabrics, long hem', notes: 'Prefers cotton-linen blends.', serviceHistoryCount: 3, status: 'Active', referralSource: 'Customer Referral', referralDetails: 'Eleanor Vance' },
+  { id: 'c-4', name: 'Clara Oswald', contact: '+1 (555) 012-3344', email: 'clara.oswald@tardis.co', address: '23 Maple Street, London', preferences: 'Alteration - Jackets, Sleeve shortening', notes: 'Paid on time always.', serviceHistoryCount: 6, status: 'Active', referralSource: 'Social Media', referralDetails: 'Facebook' },
+  { id: 'c-5', name: 'Bruce Wayne', contact: '+1 (555) 019-9999', email: 'bruce@waynecorp.com', address: 'Wayne Manor, Gotham City', preferences: 'Stitching - Premium Black Suit, Heavy-duty lining, custom pockets', notes: 'Extremely high value client. Demands total discretion.', serviceHistoryCount: 12, status: 'Active', referralSource: 'Other', referralDetails: 'Secret invitation' }
 ];
 
 export const getTodayDateString = () => {
@@ -60,12 +60,12 @@ const getDateOffset = (days) => {
 };
 
 const DEFAULT_ORDERS = [
-  { id: 'ord-101', customer_id: 'c-1', order_no: 'JB-2026-101', bill_no: 'B-8821', order_date: getDateOffset(-5), delivery_date: getDateOffset(-1), completed_date: getDateOffset(-1), service_type: 'Stitching', dress_type: 'frock', note: 'Silk Evening Gown with emerald lace trim', status: 'completed', amount: 350.00, payment_status: 'paid', assigned_staff_id: 'stf-1' },
-  { id: 'ord-102', customer_id: 'c-2', order_no: 'JB-2026-102', bill_no: 'B-8822', order_date: getDateOffset(-4), delivery_date: getDateOffset(1), service_type: 'Alteration', dress_type: 'alteration', note: 'Three wool trousers waist and cuff adjustments', status: 'in-progress', amount: 90.00, payment_status: 'paid', assigned_staff_id: 'stf-2' },
-  { id: 'ord-103', customer_id: 'c-3', order_no: 'JB-2026-103', order_date: getDateOffset(-3), delivery_date: getDateOffset(2), service_type: 'Stitching', dress_type: 'shirt', note: 'Linen casual jacket, wooden buttons', status: 'in-progress', amount: 180.00, payment_status: 'unpaid', assigned_staff_id: 'stf-3' },
-  { id: 'ord-104', customer_id: 'c-4', order_no: 'JB-2026-104', bill_no: 'B-8824', order_date: getDateOffset(-6), delivery_date: getDateOffset(-2), completed_date: getDateOffset(-2), service_type: 'Alteration', dress_type: 'alteration', note: 'Sleeve adjustments on 2 denim jackets', status: 'completed', amount: 60.00, payment_status: 'paid', assigned_staff_id: 'stf-2' },
-  { id: 'ord-105', customer_id: 'c-5', order_no: 'JB-2026-105', order_date: getDateOffset(-1), delivery_date: getDateOffset(0), service_type: 'Stitching', dress_type: 'court suite', note: 'Bespoke Tuxedo with bulletproof fabric lining simulation', status: 'pending', amount: 2400.00, payment_status: 'unpaid', assigned_staff_id: 'stf-1' },
-  { id: 'ord-106', customer_id: 'c-1', order_no: 'JB-2026-106', bill_no: 'B-8799', order_date: getDateOffset(-10), delivery_date: getDateOffset(-3), completed_date: getDateOffset(-3), service_type: 'Stitching', dress_type: 'frock', note: 'Cotton summer dress, floral print', status: 'completed', amount: 150.00, payment_status: 'paid', assigned_staff_id: 'stf-3' }
+  { id: 'ord-101', customer_id: 'c-1', order_no: 'JB-2026-101', bill_no: 'B-8821', order_date: getDateOffset(-5), delivery_date: getDateOffset(-1), completed_date: getDateOffset(-1), service_type: 'Stitching', dress_type: 'frock', note: 'Silk Evening Gown with emerald lace trim', status: 'completed', amount: 350.00, payment_status: 'paid', assigned_staff_id: 'stf-1', cutting_staff_id: 'stf-1', cutting_status: 'completed', delivery_time: '17:00', is_urgent: false },
+  { id: 'ord-102', customer_id: 'c-2', order_no: 'JB-2026-102', bill_no: 'B-8822', order_date: getDateOffset(-4), delivery_date: getDateOffset(1), service_type: 'Alteration', dress_type: 'alteration', note: 'Three wool trousers waist and cuff adjustments', status: 'in-progress', amount: 90.00, payment_status: 'paid', assigned_staff_id: 'stf-2', cutting_staff_id: 'stf-2', cutting_status: 'completed', delivery_time: '17:00', is_urgent: false },
+  { id: 'ord-103', customer_id: 'c-3', order_no: 'JB-2026-103', order_date: getDateOffset(-3), delivery_date: getDateOffset(2), service_type: 'Stitching', dress_type: 'shirt', note: 'Linen casual jacket, wooden buttons', status: 'in-progress', amount: 180.00, payment_status: 'unpaid', assigned_staff_id: 'stf-3', cutting_staff_id: 'stf-3', cutting_status: 'completed', delivery_time: '17:00', is_urgent: false },
+  { id: 'ord-104', customer_id: 'c-4', order_no: 'JB-2026-104', bill_no: 'B-8824', order_date: getDateOffset(-6), delivery_date: getDateOffset(-2), completed_date: getDateOffset(-2), service_type: 'Alteration', dress_type: 'alteration', note: 'Sleeve adjustments on 2 denim jackets', status: 'completed', amount: 60.00, payment_status: 'paid', assigned_staff_id: 'stf-2', cutting_staff_id: 'stf-2', cutting_status: 'completed', delivery_time: '17:00', is_urgent: false },
+  { id: 'ord-105', customer_id: 'c-5', order_no: 'JB-2026-105', order_date: getDateOffset(-1), delivery_date: getDateOffset(0), service_type: 'Stitching', dress_type: 'court suite', note: 'Bespoke Tuxedo with bulletproof fabric lining simulation', status: 'pending', amount: 2400.00, payment_status: 'unpaid', assigned_staff_id: 'stf-1', cutting_staff_id: '', cutting_status: 'pending', delivery_time: '17:00', is_urgent: false },
+  { id: 'ord-106', customer_id: 'c-1', order_no: 'JB-2026-106', bill_no: 'B-8799', order_date: getDateOffset(-10), delivery_date: getDateOffset(-3), completed_date: getDateOffset(-3), service_type: 'Stitching', dress_type: 'frock', note: 'Cotton summer dress, floral print', status: 'completed', amount: 150.00, payment_status: 'paid', assigned_staff_id: 'stf-3', cutting_staff_id: 'stf-2', cutting_status: 'completed', delivery_time: '17:00', is_urgent: false }
 ];
 
 const DEFAULT_STAFF = [
@@ -91,7 +91,9 @@ const DEFAULT_STAFF = [
     bank_acc_number: '7832948293',
     bank_branch: 'Kollupitiya',
     bank_passbook_link: 'https://drive.google.com/file/d/1ali_passbook/view',
-    leaves: { sick: 10, casual: 12, vacation: 15 }
+    leaves: { sick: 10, casual: 12, vacation: 15 },
+    cutting_skills: DRESS_TYPES,
+    pin: '1234'
   },
   {
     id: 'stf-2',
@@ -115,7 +117,9 @@ const DEFAULT_STAFF = [
     bank_acc_number: '1098273948',
     bank_branch: 'Dehiwala',
     bank_passbook_link: 'https://drive.google.com/file/d/1sarah_passbook/view',
-    leaves: { sick: 8, casual: 11, vacation: 14 }
+    leaves: { sick: 8, casual: 11, vacation: 14 },
+    cutting_skills: ['frock', 'saree blouse', 'salwar set', 'top', 'skirt and blouse', 'modern dress (Custom)', 'alteration'],
+    pin: '1234'
   },
   {
     id: 'stf-3',
@@ -139,7 +143,9 @@ const DEFAULT_STAFF = [
     bank_acc_number: '48392019283',
     bank_branch: 'Wattala',
     bank_passbook_link: 'https://drive.google.com/file/d/1david_passbook/view',
-    leaves: { sick: 12, casual: 12, vacation: 10 }
+    leaves: { sick: 12, casual: 12, vacation: 10 },
+    cutting_skills: ['shirt', 'trouser', 'shorts', 'alteration'],
+    pin: '1234'
   },
   {
     id: 'stf-4',
@@ -163,7 +169,9 @@ const DEFAULT_STAFF = [
     bank_acc_number: '92847293849',
     bank_branch: 'Havelock',
     bank_passbook_link: 'https://drive.google.com/file/d/1zara_passbook/view',
-    leaves: { sick: 9, casual: 10, vacation: 12 }
+    leaves: { sick: 9, casual: 10, vacation: 12 },
+    cutting_skills: [],
+    pin: '1234'
   }
 ];
 
@@ -198,6 +206,7 @@ const seedAttendance = () => {
           date: dateStr,
           hours_worked: 8,
           status: 'Present',
+          start_time: '08:30',
           leave_type: ''
         });
       }
@@ -630,7 +639,10 @@ export const db = {
         amount_paid: amountPaid,
         completed_date: completedDate,
         customer: customers.find(c => c.id === ord.customer_id) || { name: 'Unknown Customer' },
-        assignedStaff: staff.find(s => s.id === ord.assigned_staff_id) || null
+        assignedStaff: staff.find(s => s.id === ord.assigned_staff_id) || null,
+        cuttingStaff: staff.find(s => s.id === ord.cutting_staff_id) || null,
+        delivery_time: ord.delivery_time || '17:00',
+        is_urgent: !!ord.is_urgent
       };
     });
   },
@@ -797,7 +809,11 @@ export const db = {
   // Staff & Attendance Module
   // ----------------------------------------------------
   getStaff() {
-    return safeGetLocalStorage('jb_staff', []);
+    const list = safeGetLocalStorage('jb_staff', []);
+    return list.map(emp => ({
+      ...emp,
+      pin: emp.pin || '1234'
+    }));
   },
 
   saveStaff(employee) {
@@ -862,9 +878,16 @@ export const db = {
   generateMonthlyPayroll(monthYearString) {
     const staff = this.getStaff();
     const attendance = this.getAttendance();
+    const orders = this.getOrders();
     
     // Filter attendance for the selected month (starts with monthYearString)
     const monthRecords = attendance.filter(a => a.date && a.date.startsWith(monthYearString));
+
+    // Filter completed/delivered orders for the selected month
+    const completedMonthOrders = orders.filter(o => 
+      (o.status === 'completed' || o.status === 'delivered') && 
+      o.completed_date && o.completed_date.startsWith(monthYearString)
+    );
 
     return staff.map(emp => {
       const empAttendance = monthRecords.filter(a => a.staff_id === emp.id);
@@ -898,7 +921,22 @@ export const db = {
       const deductionPerDay = (emp.salary || 0) / 30;
       const deductions = unpaidAbsences * deductionPerDay;
 
-      const netPay = Math.max(0, basePay + overtimePay - deductions);
+      const bonus = (emp.monthly_bonuses && emp.monthly_bonuses[monthYearString]) || 0;
+
+      // Commissions: 30% of half price (15% of total amount) for cutting and stitching parts separately
+      let cuttingCommission = 0;
+      let stitchingCommission = 0;
+      completedMonthOrders.forEach(o => {
+        if (o.cutting_staff_id === emp.id) {
+          cuttingCommission += o.amount * 0.5 * 0.3;
+        }
+        if (o.assigned_staff_id === emp.id) {
+          stitchingCommission += o.amount * 0.5 * 0.3;
+        }
+      });
+      const commission = cuttingCommission + stitchingCommission;
+
+      const netPay = Math.max(0, basePay + overtimePay - deductions + bonus + commission);
 
       return {
         staff_id: emp.id,
@@ -910,6 +948,10 @@ export const db = {
         days_absent: daysAbsent,
         overtime_hours: overtimeHours,
         deductions: Number(deductions.toFixed(2)),
+        bonus: Number(bonus.toFixed(2)),
+        cutting_commission: Number(cuttingCommission.toFixed(2)),
+        stitching_commission: Number(stitchingCommission.toFixed(2)),
+        commission: Number(commission.toFixed(2)),
         net_pay: Number(netPay.toFixed(2))
       };
     });
@@ -1098,11 +1140,47 @@ export const db = {
           deleteFromFirestore('customers', app.entity_id);
           localStorage.setItem('jb_customers', JSON.stringify(customers));
         }
+      } else if (app.entity_type === 'short_leave') {
+        const attendance = this.getAttendance();
+        const attIndex = attendance.findIndex(a => a.staff_id === app.entity_id && a.date === app.request_date);
+        if (attIndex !== -1) {
+          attendance[attIndex].leave_type = 'short_leave';
+          localStorage.setItem('jb_attendance', JSON.stringify(attendance));
+          if (typeof syncToFirestore === 'function') {
+            syncToFirestore('attendance', attendance[attIndex]);
+          }
+        }
       }
     }
 
     localStorage.setItem('jb_approvals', JSON.stringify(approvals));
     syncToFirestore('approvals', app);
+    window.dispatchEvent(new Event('jb_database_updated'));
+    return app;
+  },
+
+  createShortLeaveRequest(staffId, staffName, todayRecord) {
+    const approvals = this.getApprovals();
+    const app = {
+      id: 'appr-' + Date.now(),
+      request_type: 'Short Leave Request',
+      requested_by: staffId,
+      requested_by_name: staffName,
+      request_date: getTodayDateString(),
+      entity_type: 'short_leave',
+      entity_id: staffId,
+      details: `${staffName} requests Short Leave on ${getTodayDateString()}`,
+      original_data: todayRecord || { staff_id: staffId, date: getTodayDateString(), status: 'Present' },
+      proposed_data: { status: 'Present', leave_type: 'short_leave' },
+      status: 'pending',
+      approved_by: null,
+      approval_date: null
+    };
+    approvals.unshift(app);
+    localStorage.setItem('jb_approvals', JSON.stringify(approvals));
+    if (typeof syncToFirestore === 'function') {
+      syncToFirestore('approvals', app);
+    }
     window.dispatchEvent(new Event('jb_database_updated'));
     return app;
   },

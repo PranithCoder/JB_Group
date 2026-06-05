@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, TODAY_DATE } from './lib/db';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import WelcomePortal from './components/WelcomePortal';
 import AnalyticsModule from './components/AnalyticsModule';
 import CustomerModule from './components/CustomerModule';
 import OrderModule from './components/OrderModule';
@@ -13,14 +14,49 @@ import AuditLogs from './components/AuditLogs';
 import RetailModule from './components/RetailModule';
 import VisitModule from './components/VisitModule';
 import CallModule from './components/CallModule';
+import TailorDashboard from './components/TailorDashboard';
 import { AlertCircle, ShieldAlert, Sparkles, X, BellRing } from 'lucide-react';
 
 
 function App() {
   const [activeRole, setActiveRole] = useState(db.getActiveRole());
-  const [currentSection, setCurrentSection] = useState('dashboard');
+  const [portalView, setPortalView] = useState(() => {
+    const savedPortal = localStorage.getItem('jb_portal_view');
+    if (savedPortal) return savedPortal;
+    const curRole = db.getActiveRole();
+    if (curRole === 'tailor') return 'tailor';
+    if (curRole && curRole !== 'none') return 'admin';
+    return 'welcome';
+  });
+  const [currentSection, setCurrentSection] = useState(activeRole === 'tailor' ? 'tailor_dashboard' : 'dashboard');
   const [dbUpdate, setDbUpdate] = useState(0);
   const [latestSimulatedNotification, setLatestSimulatedNotification] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const handleLoginAdmin = (role) => {
+    db.setActiveRole(role);
+    setActiveRole(role);
+    setPortalView('admin');
+    localStorage.setItem('jb_portal_view', 'admin');
+    setCurrentSection('dashboard');
+  };
+
+  const handleLoginTailor = (tailorId) => {
+    localStorage.setItem('jb_active_tailor_id', tailorId);
+    db.setActiveRole('tailor');
+    setActiveRole('tailor');
+    setPortalView('tailor');
+    localStorage.setItem('jb_portal_view', 'tailor');
+    setCurrentSection('tailor_dashboard');
+  };
+
+  const handleExitPortal = () => {
+    localStorage.removeItem('jb_active_tailor_id');
+    localStorage.setItem('jb_portal_view', 'welcome');
+    setPortalView('welcome');
+    db.setActiveRole('none');
+    setActiveRole('none');
+  };
 
   // States to hold badge counts dynamically
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
@@ -82,6 +118,16 @@ function App() {
     }
     // If we switch to Boss, hide super_admin-only pages
     if (role === 'boss' && ['approvals', 'audit'].includes(currentSection)) {
+      setCurrentSection('dashboard');
+    }
+    // Switch to tailor role defaults to Tailor Station dashboard
+    if (role === 'tailor') {
+      setPortalView('tailor');
+      localStorage.setItem('jb_portal_view', 'tailor');
+      setCurrentSection('tailor_dashboard');
+    }
+    // Switch away from tailor resets back to regular dashboard
+    if (role !== 'tailor' && currentSection === 'tailor_dashboard') {
       setCurrentSection('dashboard');
     }
   };
@@ -178,6 +224,14 @@ function App() {
             key={`${dbUpdate}-${activeRole}`} 
           />
         );
+      case 'tailor_dashboard':
+        return (
+          <TailorDashboard 
+            triggerUpdate={triggerUpdate} 
+            onExitPortal={handleExitPortal}
+            key={`${dbUpdate}-${activeRole}`} 
+          />
+        );
     }
   };
 
@@ -186,6 +240,35 @@ function App() {
     month: 'long',
     day: 'numeric'
   });
+
+  if (portalView === 'welcome') {
+    return (
+      <WelcomePortal 
+        onLoginAdmin={handleLoginAdmin}
+        onLoginTailor={handleLoginTailor}
+      />
+    );
+  }
+
+  if (portalView === 'tailor') {
+    return (
+      <div className="app-container" style={{ display: 'block' }}>
+        <div className="app-content" style={{ marginLeft: 0, width: '100%', padding: '1rem' }}>
+          <Header 
+            activeRole={activeRole}
+            onRoleChange={handleRoleChange}
+            currentSection={currentSection}
+            onMenuToggle={() => {}}
+            onExitPortal={handleExitPortal}
+            portalView={portalView}
+          />
+          <main className="view-container" style={{ padding: '1.5rem 0' }}>
+            {renderActiveModule()}
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -198,6 +281,8 @@ function App() {
         pendingApprovalsCount={pendingApprovalsCount}
         lowStockCount={lowStockCount}
         openComplaintsCount={openComplaintsCount}
+        isOpen={isSidebarOpen}
+        onCloseSidebar={() => setIsSidebarOpen(false)}
       />
 
       {/* Main Panel Content Area */}
@@ -208,6 +293,9 @@ function App() {
           activeRole={activeRole}
           onRoleChange={handleRoleChange}
           currentSection={currentSection}
+          onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+          onExitPortal={handleExitPortal}
+          portalView={portalView}
         />
 
         <main className="view-container">

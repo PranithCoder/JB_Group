@@ -157,7 +157,7 @@ export default function InventoryModule({ activeRole, triggerUpdate }) {
 
         {/* Tab Selection */}
         <div className="toolbar" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
-          <div style={{ display: 'flex', gap: '0.375rem' }}>
+          <div className="tab-switcher" style={{ gap: '0.375rem' }}>
             <button 
               className={`role-btn ${activeTab === 'stock' ? 'active' : ''}`}
               onClick={() => setActiveTab('stock')}

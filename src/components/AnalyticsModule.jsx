@@ -317,7 +317,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
           </h3>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: '0.25rem', backgroundColor: '#f1f5f9', padding: '0.25rem', borderRadius: '8px' }}>
+            <div className="role-switcher">
               <button 
                 onClick={() => {
                   setCompletedFilterMode('today');
@@ -1149,7 +1149,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
               <TrendingUp size={18} style={{ color: 'var(--color-primary)' }} />
               Dress Type Demand Roster
             </h3>
-            <div style={{ display: 'flex', gap: '0.25rem', backgroundColor: '#f1f5f9', padding: '0.25rem', borderRadius: '8px' }}>
+            <div className="role-switcher">
               <button 
                 onClick={() => setDemandTimeframe('daily')}
                 className={`role-btn ${demandTimeframe === 'daily' ? 'active' : ''}`}
