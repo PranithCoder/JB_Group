@@ -10,6 +10,7 @@ import {
   LogOut, 
   MapPin, 
   Phone, 
+  X,
   FileText,
   UserCheck
 } from 'lucide-react';
