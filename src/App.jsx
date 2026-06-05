@@ -19,19 +19,21 @@ import { AlertCircle, ShieldAlert, Sparkles, X, BellRing } from 'lucide-react';
 
 
 function App() {
-  const [activeRole, setActiveRole] = useState(db.getActiveRole());
-  const [portalView, setPortalView] = useState(() => {
-    const savedPortal = localStorage.getItem('jb_portal_view');
-    if (savedPortal) return savedPortal;
-    const curRole = db.getActiveRole();
-    if (curRole === 'tailor') return 'tailor';
-    if (curRole && curRole !== 'none') return 'admin';
-    return 'welcome';
-  });
-  const [currentSection, setCurrentSection] = useState(activeRole === 'tailor' ? 'tailor_dashboard' : 'dashboard');
+  const [activeRole, setActiveRole] = useState('none');
+  const [portalView, setPortalView] = useState('welcome');
+  const [currentSection, setCurrentSection] = useState('dashboard');
   const [dbUpdate, setDbUpdate] = useState(0);
   const [latestSimulatedNotification, setLatestSimulatedNotification] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Reset session on page load/reload to prevent auto-login
+  useEffect(() => {
+    localStorage.removeItem('jb_portal_view');
+    localStorage.removeItem('jb_active_tailor_id');
+    db.setActiveRole('none');
+    setActiveRole('none');
+    setPortalView('welcome');
+  }, []);
 
   const handleLoginAdmin = (role) => {
     db.setActiveRole(role);

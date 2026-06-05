@@ -354,7 +354,7 @@ const initLocalStorage = () => {
 
 
   if (!localStorage.getItem('jb_active_role')) {
-    localStorage.setItem('jb_active_role', 'manager');
+    localStorage.setItem('jb_active_role', 'none');
   }
 
   localStorage.setItem('jb_db_initialized', 'true');
@@ -464,7 +464,7 @@ collectionsToSync.forEach(({ fsKey, lsKey }) => {
 export const db = {
   // Active Role Helper
   getActiveRole() {
-    return localStorage.getItem('jb_active_role') || 'manager';
+    return localStorage.getItem('jb_active_role') || 'none';
   },
 
   setActiveRole(role) {
