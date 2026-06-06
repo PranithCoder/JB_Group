@@ -33,7 +33,7 @@ export const DRESS_TYPES = [
 const DEFAULT_USERS = [
   { id: 'usr-1', name: 'Alina Officer', email: 'officer@jbgroup.com', role: 'officer', status: 'Active' },
   { id: 'usr-2', name: 'Marcus Manager', email: 'manager@jbgroup.com', role: 'manager', status: 'Active' },
-  { id: 'usr-3', name: 'Brenda Boss', email: 'boss@jbgroup.com', role: 'boss', status: 'Active' },
+  { id: 'usr-3', name: 'Boss Jeyatheepan', email: 'josephtheepan@jbgroup.com', role: 'boss', status: 'Active' },
   { id: 'usr-4', name: 'Sam Super', email: 'super@jbgroup.com', role: 'super_admin', status: 'Active' }
 ];
 
@@ -253,6 +253,17 @@ export const db = {
   // ----------------------------------------------------
   getUsers() {
     const list = safeGetLocalStorage('jb_users', DEFAULT_USERS);
+    let updated = false;
+    DEFAULT_USERS.forEach(defUser => {
+      if (!list.some(u => u.id === defUser.id)) {
+        list.push(defUser);
+        syncToFirestore('users', defUser);
+        updated = true;
+      }
+    });
+    if (updated) {
+      localStorage.setItem('jb_users', JSON.stringify(list));
+    }
     return list.map(u => ({
       ...u,
       status: u.status || 'Active'

@@ -40,16 +40,18 @@ export default function WelcomePortal({ onLoginAdmin, onLoginTailor }) {
     }
 
     const users = db.getUsers();
-    let matchedUser = null;
+    let matchedUser = users.find(u => u.email && u.email.toLowerCase() === emailClean);
 
-    if (emailClean === 'officer@jbgroup.com') {
-      matchedUser = users.find(u => u.role === 'officer');
-    } else if (emailClean === 'admin@jbgroup.com' || emailClean === 'manager@jbgroup.com') {
-      matchedUser = users.find(u => u.role === 'manager');
-    } else if (emailClean === 'josephtheepan@jbgroup.com' || emailClean === 'boss@jbgroup.com') {
-      matchedUser = users.find(u => u.role === 'boss');
-    } else if (emailClean === 'superadmin@jbgroup.com' || emailClean === 'super@jbgroup.com') {
-      matchedUser = users.find(u => u.role === 'super_admin');
+    if (!matchedUser) {
+      if (emailClean === 'officer@jbgroup.com') {
+        matchedUser = users.find(u => u.role === 'officer');
+      } else if (emailClean === 'admin@jbgroup.com' || emailClean === 'manager@jbgroup.com') {
+        matchedUser = users.find(u => u.role === 'manager');
+      } else if (emailClean === 'josephtheepan@jbgroup.com' || emailClean === 'boss@jbgroup.com') {
+        matchedUser = users.find(u => u.role === 'boss');
+      } else if (emailClean === 'superadmin@jbgroup.com' || emailClean === 'super@jbgroup.com') {
+        matchedUser = users.find(u => u.role === 'super_admin');
+      }
     }
 
     if (!matchedUser) {
