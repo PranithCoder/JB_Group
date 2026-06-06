@@ -190,9 +190,6 @@ collectionsToSync.forEach(({ fsKey, lsKey }) => {
           if (item && item.id) {
             try {
               const cleanItem = JSON.parse(JSON.stringify(item));
-              if (fsKey === 'orders' && cleanItem.order_no === 'JB-2026-3105') {
-                cleanItem.order_no = 'JB-2026-3104';
-              }
               if (cleanItem.customer) delete cleanItem.customer;
               if (cleanItem.assignedStaff) delete cleanItem.assignedStaff;
               if (cleanItem.item) delete cleanItem.item;
@@ -211,12 +208,7 @@ collectionsToSync.forEach(({ fsKey, lsKey }) => {
 
     let list = [];
     snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      if (fsKey === 'orders' && data.order_no === 'JB-2026-3105') {
-        data.order_no = 'JB-2026-3104';
-        setDoc(doc(firestore, 'orders', data.id), data).catch(err => console.error("Error migrating order 3105:", err));
-      }
-      list.push(data);
+      list.push(docSnap.data());
     });
 
     // Merge logic to protect local-first edits against server rollbacks or sync delays
@@ -420,23 +412,7 @@ export const db = {
   // Orders Module
   // ----------------------------------------------------
   getOrders() {
-    let orders = safeGetLocalStorage('jb_orders', []);
-    let updated = false;
-    orders = orders.map(ord => {
-      if (ord.order_no === 'JB-2026-3105') {
-        ord.order_no = 'JB-2026-3104';
-        updated = true;
-      }
-      return ord;
-    });
-    if (updated) {
-      localStorage.setItem('jb_orders', JSON.stringify(orders));
-      orders.forEach(ord => {
-        if (ord.order_no === 'JB-2026-3104') {
-          syncToFirestore('orders', ord);
-        }
-      });
-    }
+    const orders = safeGetLocalStorage('jb_orders', []);
     const customers = this.getCustomers();
     const staff = this.getStaff();
     return orders.map(ord => {
