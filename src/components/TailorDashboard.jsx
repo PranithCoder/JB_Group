@@ -244,6 +244,10 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
   const confirmPickupOrder = () => {
     if (!pickingUpOrder) return;
 
+    if (!window.confirm("Are you sure you want to start working on this order?")) {
+      return;
+    }
+
     let payload = {
       ...pickingUpOrder,
       status: 'in-progress',
@@ -691,6 +695,19 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                       <span className="detail-label">Order Number</span>
                       <span className="detail-val" style={{ fontWeight: 700 }}>{activeOrder.order_no}</span>
                     </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Service Category</span>
+                      <span className="detail-val">
+                        <span className={`badge ${
+                          activeOrder.service_type === 'Stitching' ? 'success' :
+                          activeOrder.service_type === 'Alteration' ? 'warning' : 'info'
+                        }`} style={{ fontSize: '0.725rem', padding: '0.15rem 0.5rem', fontWeight: 600 }}>
+                          {activeOrder.service_type === 'Stitching' ? '🧵 Stitching' :
+                           activeOrder.service_type === 'Alteration' ? '✂️ Alteration' :
+                           '🔧 Repairs & Stitching'}
+                        </span>
+                      </span>
+                    </div>
                     {activeOrder.bill_no && (
                       <div className="detail-item">
                         <span className="detail-label">Bill Number</span>
@@ -878,9 +895,17 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                                 </span>
                               )}
                             </div>
-                            <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: ord.is_urgent ? 'var(--color-danger)' : 'var(--text-primary)', marginTop: '0.125rem' }}>
-                              {ord.service_type} ({ord.dress_type})
-                            </h4>
+                             <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: ord.is_urgent ? 'var(--color-danger)' : 'var(--text-primary)', marginTop: '0.125rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                               <span className={`badge ${
+                                 ord.service_type === 'Stitching' ? 'success' :
+                                 ord.service_type === 'Alteration' ? 'warning' : 'info'
+                               }`} style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', fontWeight: 600 }}>
+                                 {ord.service_type === 'Stitching' ? '🧵 Stitching' :
+                                  ord.service_type === 'Alteration' ? '✂️ Alteration' :
+                                  '🔧 Repairs & Stitching'}
+                               </span>
+                               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}>({ord.dress_type})</span>
+                             </h4>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
                             <span className={`badge ${
@@ -933,16 +958,39 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                           <button 
                             className="btn btn-primary" 
                             onClick={() => {
-                              setPickingUpOrder(ord);
-                              const canCut = activeTailor.cutting_skills?.includes(ord.dress_type);
-                              if (ord.cutting_status === 'completed') {
-                                setPickupType('stitching');
-                              } else if (canCut) {
-                                setPickupType('both');
+                              if (ord.service_type === 'Alteration') {
+                                if (window.confirm("Are you sure you want to start working on this Alteration order?")) {
+                                  let payload = {
+                                    ...ord,
+                                    status: 'in-progress',
+                                    work_started_time: new Date().toISOString(),
+                                    assigned_staff_id: activeTailorId,
+                                    cutting_staff_id: activeTailorId,
+                                    cutting_status: 'completed'
+                                  };
+                                  try {
+                                    db.saveOrder(payload);
+                                    refreshData();
+                                    db.addAuditLog(
+                                      `Tailor Pickup: ${ord.order_no}`,
+                                      `Tailor ${activeTailor.name} claimed alteration order.`
+                                    );
+                                  } catch (err) {
+                                    alert(err.message);
+                                  }
+                                }
                               } else {
-                                setPickupType('stitching');
+                                setPickingUpOrder(ord);
+                                const canCut = activeTailor.cutting_skills?.includes(ord.dress_type);
+                                if (ord.cutting_status === 'completed') {
+                                  setPickupType('stitching');
+                                } else if (canCut) {
+                                  setPickupType('both');
+                                } else {
+                                  setPickupType('stitching');
+                                }
+                                setPickupCuttingTailorId('');
                               }
-                              setPickupCuttingTailorId('');
                             }}
                             style={{ 
                               padding: '0.45rem 1rem', 
@@ -984,7 +1032,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {/* Both Option */}
+                {/* Both (Cutting & Stitching or Repairs & Stitching) Option */}
                 <label style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -1006,9 +1054,9 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                     onChange={() => setPickupType('both')}
                   />
                   <div>
-                    <strong style={{ display: 'block', fontSize: '0.875rem' }}>Both (Cutting & Stitching)</strong>
+                    <strong style={{ display: 'block', fontSize: '0.875rem' }}>Cutting & Stitching</strong>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      You cut and stitch. Earns Rs. {(pickingUpOrder.amount * 0.3).toFixed(2)} commission (30%).
+                      You cut and stitch. Earns Rs. ${(pickingUpOrder.amount * 0.3).toFixed(2)} commission (30%).
                     </span>
                     {!activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) && (
                       <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 600, marginTop: '0.125rem' }}>
@@ -1018,45 +1066,6 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                     {pickingUpOrder.cutting_status === 'completed' && (
                       <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-warning)', fontWeight: 600, marginTop: '0.125rem' }}>
                         ⚠️ Cutting already completed by another tailor
-                      </span>
-                    )}
-                  </div>
-                </label>
-
-                {/* Cutting Only Option */}
-                <label style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.75rem', 
-                  padding: '0.75rem', 
-                  border: '1px solid var(--border-light)', 
-                  borderRadius: '6px', 
-                  cursor: (activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) && pickingUpOrder.cutting_status !== 'completed') ? 'pointer' : 'not-allowed',
-                  opacity: (activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) && pickingUpOrder.cutting_status !== 'completed') ? 1 : 0.5,
-                  backgroundColor: pickupType === 'cutting' ? 'var(--color-primary-light)' : 'transparent',
-                  borderColor: pickupType === 'cutting' ? 'var(--color-primary)' : 'var(--border-light)'
-                }}>
-                  <input 
-                    type="radio" 
-                    name="pickupType" 
-                    value="cutting" 
-                    checked={pickupType === 'cutting'}
-                    disabled={!activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) || pickingUpOrder.cutting_status === 'completed'}
-                    onChange={() => setPickupType('cutting')}
-                  />
-                  <div>
-                    <strong style={{ display: 'block', fontSize: '0.875rem' }}>Cutting Only</strong>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      Only cut fabric. Earns Rs. {(pickingUpOrder.amount * 0.15).toFixed(2)} commission (15%).
-                    </span>
-                    {!activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) && (
-                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 600, marginTop: '0.125rem' }}>
-                        ⚠️ Lacks cutting capability for {pickingUpOrder.dress_type}
-                      </span>
-                    )}
-                    {pickingUpOrder.cutting_status === 'completed' && (
-                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-success)', fontWeight: 600, marginTop: '0.125rem' }}>
-                        ✓ Cutting already completed
                       </span>
                     )}
                   </div>

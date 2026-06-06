@@ -395,7 +395,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                   dotClass = 'busy-dot';
                   
                   const isCutting = currentActive.cutting_staff_id === tailor.id && currentActive.cutting_status === 'pending';
-                  taskDetails = `${isCutting ? 'Cutting' : 'Stitching'} Order ${currentActive.order_no} (${currentActive.dress_type})`;
+                  taskDetails = `${isCutting ? 'Cutting' : 'Stitching'} portion of ${currentActive.service_type} Order ${currentActive.order_no} (${currentActive.dress_type})`;
                   
                   // Calculate elapsed time
                   if (currentActive.work_started_time) {
