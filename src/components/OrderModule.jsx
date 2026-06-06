@@ -85,6 +85,10 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       const compDate = o.completed_date || o.delivery_date;
       return o.status === 'delivered' && compDate >= completedFromDate && compDate <= completedToDate;
     }
+    if (statusFilter === 'cancelled') {
+      const cancelDate = o.cancelled_at ? o.cancelled_at.split('T')[0] : o.delivery_date;
+      return o.status === 'cancelled' && cancelDate >= completedFromDate && cancelDate <= completedToDate;
+    }
     return o.status === statusFilter;
   });
 
@@ -128,7 +132,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       assigned_staff_id: order.assigned_staff_id || '',
       cutting_staff_id: order.cutting_staff_id || '',
       cutting_status: order.cutting_status || 'pending',
-      bill_no: order.bill_no || ''
+      bill_no: order.bill_no || '',
+      cancellation_reason: order.cancellation_reason || ''
     });
     setCustSearch(matchingCust ? `${matchingCust.name} (${matchingCust.contact})` : '');
     setEditingOrder(order);
@@ -144,6 +149,10 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       }
       if (!formData.delivery_date || !formData.amount) {
         alert('Required fields are missing.');
+        return;
+      }
+      if (formData.status === 'cancelled' && (!formData.cancellation_reason || !formData.cancellation_reason.trim())) {
+        alert('Please enter a cancellation reason.');
         return;
       }
       let finalPaymentStatus = formData.payment_status;
@@ -203,7 +212,11 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         assigned_staff_id: formData.assigned_staff_id,
         cutting_staff_id: formData.cutting_staff_id || '',
         cutting_status: formData.cutting_status || 'pending',
-        bill_no: finalBillNo
+        bill_no: finalBillNo,
+        ...(formData.status === 'cancelled' ? {
+          cancellation_reason: (formData.cancellation_reason || '').trim(),
+          cancelled_at: editingOrder?.cancelled_at || new Date().toISOString()
+        } : {})
       };
 
       const result = db.saveOrder(payload);
@@ -300,6 +313,21 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         return;
       }
       payload.bill_no = billNo.trim();
+    }
+
+    if (newStatus === 'cancelled') {
+      const reason = window.prompt("Please enter the reason for cancellation:");
+      if (reason === null) {
+        refreshList();
+        return;
+      }
+      if (!reason.trim()) {
+        alert("Cancellation aborted. Reason is required.");
+        refreshList();
+        return;
+      }
+      payload.cancellation_reason = reason.trim();
+      payload.cancelled_at = new Date().toISOString();
     }
 
     try {
@@ -406,6 +434,13 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                 Delivered
               </button>
               <button 
+                onClick={() => setStatusFilter('cancelled')}
+                className={`role-btn ${statusFilter === 'cancelled' ? 'active' : ''}`}
+                style={{ padding: '0.25rem 0.625rem', fontSize: '0.775rem', color: 'var(--color-danger)' }}
+              >
+                Cancelled
+              </button>
+              <button 
                 onClick={() => setStatusFilter('overdue')}
                 className={`role-btn ${statusFilter === 'overdue' ? 'active' : ''}`}
                 style={{ padding: '0.25rem 0.625rem', fontSize: '0.775rem', color: 'var(--color-danger)' }}
@@ -421,7 +456,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
               </button>
             </div>
 
-            {(statusFilter === 'completed' || statusFilter === 'delivered') && (
+            {(statusFilter === 'completed' || statusFilter === 'delivered' || statusFilter === 'cancelled') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.825rem', padding: '0.25rem 0.5rem', backgroundColor: '#fafafa', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
                 <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>From:</span>
                 <input 
@@ -586,6 +621,16 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       </td>
                       <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ord.note}>
                         <div>{ord.note || '—'}</div>
+                        {ord.status === 'cancelled' && ord.cancellation_reason && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 500, marginTop: '0.25rem', whiteSpace: 'normal' }}>
+                            <strong>Cancelled:</strong> {ord.cancellation_reason}
+                            {ord.cancelled_at && (
+                              <span style={{ fontSize: '0.675rem', color: 'var(--text-muted)', display: 'block' }}>
+                                ({new Date(ord.cancelled_at).toLocaleDateString()})
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {(ord.photo_front || ord.photo_back) && (
                           <div style={{ marginTop: '0.25rem' }}>
                             <button 
@@ -626,7 +671,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                         {isReadOnly ? (
                           <span className={`badge ${
                             ord.status === 'completed' || ord.status === 'delivered' ? 'success' : 
-                            ord.status === 'in-progress' ? 'warning' : 'info'
+                            ord.status === 'in-progress' ? 'warning' : 
+                            ord.status === 'cancelled' ? 'danger' : 'info'
                           }`}>
                             {ord.status === 'delivered' ? 'delivered to customer' : ord.status}
                           </span>
@@ -643,10 +689,12 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                               fontWeight: 600,
                               backgroundColor: 
                                 ord.status === 'completed' || ord.status === 'delivered' ? 'var(--color-success-light)' : 
-                                ord.status === 'in-progress' ? 'var(--color-warning-light)' : 'var(--color-primary-light)',
+                                ord.status === 'in-progress' ? 'var(--color-warning-light)' : 
+                                ord.status === 'cancelled' ? 'var(--color-danger-light)' : 'var(--color-primary-light)',
                               color: 
                                 ord.status === 'completed' || ord.status === 'delivered' ? 'var(--color-success)' : 
-                                ord.status === 'in-progress' ? '#b45309' : 'var(--color-primary)',
+                                ord.status === 'in-progress' ? '#b45309' : 
+                                ord.status === 'cancelled' ? 'var(--color-danger)' : 'var(--color-primary)',
                               border: 'none',
                               cursor: 'pointer'
                             }}
@@ -655,22 +703,28 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                               <>
                                 <option value="pending">Pending</option>
                                 <option value="in-progress">In-Progress</option>
+                                <option value="cancelled">Cancelled</option>
                               </>
                             )}
                             {ord.status === 'in-progress' && (
                               <>
                                 <option value="in-progress">In-Progress</option>
                                 <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
                               </>
                             )}
                             {ord.status === 'completed' && (
                               <>
                                 <option value="completed">Completed</option>
                                 <option value="delivered">Delivered to the customer</option>
+                                <option value="cancelled">Cancelled</option>
                               </>
                             )}
                             {ord.status === 'delivered' && (
                               <option value="delivered">Delivered to the customer</option>
+                            )}
+                            {ord.status === 'cancelled' && (
+                              <option value="cancelled">Cancelled</option>
                             )}
                           </select>
                         )}
@@ -680,12 +734,12 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                           <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem' }} onClick={() => viewAuditLog(ord)} title="Audit Trail">
                             <Eye size={14} /> Audit
                           </button>
-                          {!isReadOnly && ord.status !== 'completed' && ord.status !== 'delivered' && (
+                          {!isReadOnly && ord.status !== 'completed' && ord.status !== 'delivered' && ord.status !== 'cancelled' && (
                             <button className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openEditModal(ord)} title="Edit Order Details">
                               <Edit2 size={14} />
                             </button>
                           )}
-                          {!isReadOnly && ord.status !== 'completed' && ord.status !== 'delivered' && (
+                          {!isReadOnly && ord.status !== 'completed' && ord.status !== 'delivered' && ord.status !== 'cancelled' && (
                             <button className="btn btn-secondary btn-sm text-red" style={{ padding: '0.25rem 0.5rem' }} onClick={() => handleDelete(ord.id)} title="Delete Order">
                               <Trash2 size={14} />
                             </button>
@@ -888,24 +942,43 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                           <>
                             <option value="pending">Pending (Design)</option>
                             <option value="in-progress">In-Progress (Stitching/Cutting)</option>
+                            <option value="cancelled">Cancelled</option>
                           </>
                         )}
                         {editingOrder.status === 'in-progress' && (
                           <>
                             <option value="in-progress">In-Progress (Stitching/Cutting)</option>
                             <option value="completed">Completed & Verified</option>
+                            <option value="cancelled">Cancelled</option>
                           </>
                         )}
                         {editingOrder.status === 'completed' && (
                           <>
                             <option value="completed">Completed & Verified</option>
                             <option value="delivered">Delivered to the customer</option>
+                            <option value="cancelled">Cancelled</option>
                           </>
                         )}
                         {editingOrder.status === 'delivered' && (
                           <option value="delivered">Delivered to the customer</option>
                         )}
+                        {editingOrder.status === 'cancelled' && (
+                          <option value="cancelled">Cancelled</option>
+                        )}
                       </select>
+                    </div>
+                  )}
+                  {formData.status === 'cancelled' && (
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Cancellation Reason *</label>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        required
+                        value={formData.cancellation_reason || ''}
+                        onChange={e => setFormData({ ...formData, cancellation_reason: e.target.value })}
+                        placeholder="Please type why this order is being cancelled..."
+                      />
                     </div>
                   )}
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>

@@ -33,6 +33,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
   const [completedFilterMode, setCompletedFilterMode] = useState('today');
   const [completedFromDate, setCompletedFromDate] = useState(TODAY_DATE);
   const [completedToDate, setCompletedToDate] = useState(TODAY_DATE);
+  const [cancellationTimeframe, setCancellationTimeframe] = useState('weekly');
 
   const orders = db.getOrders();
   const customers = db.getCustomers();
@@ -121,7 +122,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
     retailSales.reduce((sum, s) => sum + s.total_price, 0);
 
   const cashIn = orders
-    .filter(o => isWithinTimeframe(o.order_date, cashflowTimeframe))
+    .filter(o => o.status !== 'cancelled' && isWithinTimeframe(o.order_date, cashflowTimeframe))
     .reduce((sum, o) => {
       if (o.payment_status === 'paid') return sum + o.amount;
       if (o.payment_status === 'partially_paid') return sum + (o.amount_paid || 0);
@@ -210,6 +211,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
       let cashOutVal = 0;
 
       orders.forEach(o => {
+        if (o.status === 'cancelled') return;
         const oDate = new Date(o.order_date);
         const diffDays = Math.round((refDate - oDate) / (1000 * 60 * 60 * 24));
         if (diffDays >= w.start && diffDays <= w.end) {
@@ -466,6 +468,94 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCancellationSummary = () => {
+    const cancelledOrders = orders.filter(o => 
+      o.status === 'cancelled' && 
+      isWithinTimeframe(o.cancelled_at ? o.cancelled_at.split('T')[0] : o.order_date, cancellationTimeframe)
+    );
+
+    const totalCancelledCount = cancelledOrders.length;
+    const totalCancelledValue = cancelledOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+
+    return (
+      <div className="card">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+            <TrendingDown size={18} style={{ color: 'var(--color-danger)' }} />
+            Order Cancellation Summary
+          </h3>
+          <div style={{ display: 'flex', gap: '0.25rem', backgroundColor: '#f1f5f9', padding: '0.25rem', borderRadius: '8px' }}>
+            {['daily', 'weekly', 'monthly', 'all'].map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setCancellationTimeframe(tf)}
+                className={`role-btn ${cancellationTimeframe === tf ? 'active' : ''}`}
+                style={{ padding: '0.25rem 0.625rem', fontSize: '0.75rem', textTransform: 'capitalize' }}
+              >
+                {tf === 'all' ? 'All-Time' : tf === 'daily' ? 'Today' : tf === 'weekly' ? 'This Week' : 'This Month'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="card-body">
+          <div style={{ 
+            display: 'flex', 
+            gap: '1rem', 
+            marginBottom: '1rem', 
+            padding: '1rem', 
+            backgroundColor: 'var(--color-danger-light)', 
+            border: '1px solid var(--border-light)', 
+            borderRadius: '8px' 
+          }}>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Cancelled Orders</span>
+              <strong style={{ fontSize: '1.5rem', color: 'var(--color-danger)' }}>{totalCancelledCount}</strong>
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Cancelled Value</span>
+              <strong style={{ fontSize: '1.5rem', color: 'var(--color-danger)' }}>Rs. {totalCancelledValue.toFixed(2)}</strong>
+            </div>
+          </div>
+
+          <div className="table-container" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Order No</th>
+                  <th>Customer</th>
+                  <th>Cancelled Date</th>
+                  <th>Amount</th>
+                  <th>Cancellation Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cancelledOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                      No cancelled orders found for this period.
+                    </td>
+                  </tr>
+                ) : (
+                  cancelledOrders.map(o => (
+                    <tr key={o.id}>
+                      <td style={{ fontWeight: 600 }}>{o.order_no}</td>
+                      <td>{o.customer?.name || '—'}</td>
+                      <td>{o.cancelled_at ? new Date(o.cancelled_at).toLocaleDateString() : '—'}</td>
+                      <td style={{ fontWeight: 600 }}>Rs. {Number(o.amount || 0).toFixed(2)}</td>
+                      <td style={{ color: 'var(--color-danger)', fontWeight: 500, maxWidth: '250px', wordBreak: 'break-word' }}>
+                        {o.cancellation_reason || 'No reason specified'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -791,6 +881,18 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                                       return;
                                     }
                                   }
+                                  if (newStatus === 'cancelled') {
+                                    const reason = window.prompt("Please enter the reason for cancellation:");
+                                    if (reason === null) {
+                                      return;
+                                    }
+                                    if (!reason.trim()) {
+                                      alert("Cancellation aborted. Reason is required.");
+                                      return;
+                                    }
+                                    payload.cancellation_reason = reason.trim();
+                                    payload.cancelled_at = new Date().toISOString();
+                                  }
                                   try {
                                     db.saveOrder(payload);
                                   } catch (err) {
@@ -808,32 +910,40 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                                   cursor: 'pointer',
                                   backgroundColor: 
                                     o.status === 'completed' || o.status === 'delivered' ? 'var(--color-success-light)' : 
-                                    o.status === 'in-progress' ? 'var(--color-warning-light)' : 'var(--color-primary-light)',
+                                    o.status === 'in-progress' ? 'var(--color-warning-light)' : 
+                                    o.status === 'cancelled' ? 'var(--color-danger-light)' : 'var(--color-primary-light)',
                                   color: 
                                     o.status === 'completed' || o.status === 'delivered' ? 'var(--color-success)' : 
-                                    o.status === 'in-progress' ? '#b45309' : 'var(--color-primary)'
+                                    o.status === 'in-progress' ? '#b45309' : 
+                                    o.status === 'cancelled' ? 'var(--color-danger)' : 'var(--color-primary)'
                                 }}
                               >
                                 {o.status === 'pending' && (
                                   <>
                                     <option value="pending">Pending</option>
                                     <option value="in-progress">In-Progress</option>
+                                    <option value="cancelled">Cancelled</option>
                                   </>
                                 )}
                                 {o.status === 'in-progress' && (
                                   <>
                                     <option value="in-progress">In-Progress</option>
                                     <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
                                   </>
                                 )}
                                 {o.status === 'completed' && (
                                   <>
                                     <option value="completed">Completed</option>
                                     <option value="delivered">Delivered to customer</option>
+                                    <option value="cancelled">Cancelled</option>
                                   </>
                                 )}
                                 {o.status === 'delivered' && (
                                   <option value="delivered">Delivered to customer</option>
+                                )}
+                                {o.status === 'cancelled' && (
+                                  <option value="cancelled">Cancelled</option>
                                 )}
                               </select>
                             </td>
@@ -880,6 +990,11 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
 
         {/* Real-Time Workshop Activity for Officers */}
         {renderWorkshopActivity()}
+
+        {/* Order Cancellation Summary */}
+        <div style={{ marginTop: '1.5rem' }}>
+          {renderCancellationSummary()}
+        </div>
 
         {/* Completed Deliveries Report Card for Officers */}
         <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
@@ -1353,6 +1468,11 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
 
       {/* Real-Time Workshop Activity for Managers */}
       {renderWorkshopActivity()}
+
+      {/* Order Cancellation Summary */}
+      <div style={{ marginTop: '1.5rem' }}>
+        {renderCancellationSummary()}
+      </div>
 
       {/* New Dress Demand & Service Breakdown Grid for Managers */}
       <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 1fr', marginTop: '1.5rem' }}>
