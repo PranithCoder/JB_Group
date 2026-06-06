@@ -156,6 +156,20 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
     ? Math.round((presentRecords / totalAttendanceRecords) * 100) 
     : 100;
 
+  // Active & Stitching Tailors calculation
+  const staffList = db.getStaff().filter(s => s.role !== 'Store Assistant');
+  const attendanceToday = attendance.filter(a => a.date === TODAY_DATE && a.status === 'Present');
+  const activeTailorsList = staffList.filter(s => {
+    const record = attendanceToday.find(a => a.staff_id === s.id);
+    return record && record.start_time && !record.end_time;
+  });
+  const activeTailorsCount = activeTailorsList.length;
+
+  const inProgressOrdersList = orders.filter(o => o.status === 'in-progress');
+  const stitchingTailorsCount = activeTailorsList.filter(s => 
+    inProgressOrdersList.some(o => o.assigned_staff_id === s.id || o.cutting_staff_id === s.id)
+  ).length;
+
   // 2. Chart Data Generation
   
   // A. Sales Over Time (Last 10 days)
@@ -306,6 +320,157 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
   });
 
   const totalCompletedValue = filteredCompletedOrders.reduce((sum, o) => sum + o.amount, 0);
+
+  const renderWorkshopActivity = () => {
+    return (
+      <div className="card" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+        <style>{`
+          @keyframes pulse-glowing {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+          }
+          .pulse-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse-glowing 2s infinite;
+          }
+          .idle-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #cbd5e1;
+            border-radius: 50%;
+            display: inline-block;
+          }
+          .busy-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #3b82f6;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse-glowing 2s infinite;
+            animation-name: pulse-glowing-blue;
+          }
+          @keyframes pulse-glowing-blue {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+          }
+        `}</style>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3>
+            <Users size={18} style={{ color: 'var(--color-primary)' }} />
+            Real-Time Workshop & Tailor Activity
+          </h3>
+          <span className="badge success" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontWeight: 600 }}>
+            <span className="pulse-dot"></span> Live status
+          </span>
+        </div>
+        <div className="card-body">
+          <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '1.25rem', marginTop: 0 }}>
+            Monitor currently clocked-in tailors, their shifts, and live stitching assignments.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+            {staffList.map(tailor => {
+              const todayAtt = attendanceToday.find(a => a.staff_id === tailor.id);
+              const isClockedIn = todayAtt && todayAtt.start_time && !todayAtt.end_time;
+              
+              // Find active order
+              const currentActive = inProgressOrdersList.find(o => 
+                o.assigned_staff_id === tailor.id || o.cutting_staff_id === tailor.id
+              );
+              
+              let statusText = 'Off Duty';
+              let statusColor = '#64748b';
+              let dotClass = 'idle-dot';
+              let taskDetails = 'Not clocked in today.';
+              
+              if (isClockedIn) {
+                if (currentActive) {
+                  statusText = 'Busy Stitching';
+                  statusColor = 'var(--color-primary)';
+                  dotClass = 'busy-dot';
+                  
+                  const isCutting = currentActive.cutting_staff_id === tailor.id && currentActive.cutting_status === 'pending';
+                  taskDetails = `${isCutting ? 'Cutting' : 'Stitching'} Order ${currentActive.order_no} (${currentActive.dress_type})`;
+                  
+                  // Calculate elapsed time
+                  if (currentActive.work_started_time) {
+                    const elapsed = Math.round((new Date() - new Date(currentActive.work_started_time)) / (1000 * 60));
+                    taskDetails += ` (Elapsed: ${elapsed > 0 ? `${elapsed} mins` : 'Just started'})`;
+                  }
+                } else {
+                  statusText = 'Idle (Waiting)';
+                  statusColor = 'var(--color-success)';
+                  dotClass = 'pulse-dot';
+                  taskDetails = 'Waiting for order assignment.';
+                }
+              }
+              
+              return (
+                <div key={tailor.id} style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '0.75rem', 
+                  padding: '1rem', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--border-light)', 
+                  backgroundColor: isClockedIn ? '#f8fafc' : '#fafafa',
+                  opacity: isClockedIn ? 1 : 0.7
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      {tailor.photo ? (
+                        <img 
+                          src={tailor.photo} 
+                          alt={tailor.name} 
+                          style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-light)' }} 
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      ) : null}
+                      <div>
+                        <strong style={{ fontSize: '0.875rem', display: 'block' }}>{tailor.name}</strong>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>{tailor.role}</span>
+                      </div>
+                    </div>
+                    
+                    <span className="badge" style={{ 
+                      fontSize: '0.7rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.375rem', 
+                      backgroundColor: isClockedIn ? (currentActive ? 'var(--color-primary-light)' : 'var(--color-success-light)') : '#e2e8f0',
+                      color: statusColor,
+                      fontWeight: 600,
+                      padding: '0.15rem 0.5rem'
+                    }}>
+                      <span className={dotClass}></span> {statusText}
+                    </span>
+                  </div>
+                  
+                  <div style={{ borderTop: '1px dashed var(--border-light)', paddingTop: '0.625rem', fontSize: '0.8rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Shift Start:</span>
+                      <span style={{ fontWeight: 600 }}>{isClockedIn ? todayAtt.start_time : '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Current Task:</span>
+                      <span style={{ fontWeight: 600, color: currentActive ? 'var(--color-primary)' : 'inherit', textTransform: 'capitalize' }}>
+                        {taskDetails}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderCompletedDeliveriesReport = () => {
     return (
@@ -484,6 +649,28 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
               <span className="kpi-badge success">Stitched & Delivered</span>
             </div>
             <div className="kpi-icon-wrapper green">
+              <ShoppingBag size={24} />
+            </div>
+          </div>
+
+          <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('staff')}>
+            <div className="kpi-info">
+              <span className="kpi-label">Active Tailors</span>
+              <span className="kpi-value">{activeTailorsCount}</span>
+              <span className="kpi-badge success">Clocked In</span>
+            </div>
+            <div className="kpi-icon-wrapper green">
+              <Users size={24} />
+            </div>
+          </div>
+
+          <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('orders')}>
+            <div className="kpi-info">
+              <span className="kpi-label">Stitching Tailors</span>
+              <span className="kpi-value">{stitchingTailorsCount}</span>
+              <span className="kpi-badge success">Busy Working</span>
+            </div>
+            <div className="kpi-icon-wrapper blue">
               <ShoppingBag size={24} />
             </div>
           </div>
@@ -690,6 +877,9 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
           </div>
 
         </div>
+
+        {/* Real-Time Workshop Activity for Officers */}
+        {renderWorkshopActivity()}
 
         {/* Completed Deliveries Report Card for Officers */}
         <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
@@ -960,6 +1150,28 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
           </div>
         </div>
 
+        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('staff')}>
+          <div className="kpi-info">
+            <span className="kpi-label">Active Tailors</span>
+            <span className="kpi-value">{activeTailorsCount}</span>
+            <span className="kpi-badge up">Clocked In</span>
+          </div>
+          <div className="kpi-icon-wrapper green">
+            <Users size={24} />
+          </div>
+        </div>
+
+        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setCurrentSection('orders')}>
+          <div className="kpi-info">
+            <span className="kpi-label">Stitching Tailors</span>
+            <span className="kpi-value">{stitchingTailorsCount}</span>
+            <span className="kpi-badge up">Busy Working</span>
+          </div>
+          <div className="kpi-icon-wrapper blue">
+            <ShoppingBag size={24} />
+          </div>
+        </div>
+
         <div className="kpi-card">
           <div className="kpi-info">
             <span className="kpi-label">Cash-In (Revenue)</span>
@@ -1138,6 +1350,9 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
           </div>
         </div>
       </div>
+
+      {/* Real-Time Workshop Activity for Managers */}
+      {renderWorkshopActivity()}
 
       {/* New Dress Demand & Service Breakdown Grid for Managers */}
       <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 1fr', marginTop: '1.5rem' }}>

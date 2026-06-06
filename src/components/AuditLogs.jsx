@@ -3,18 +3,14 @@ import { db } from '../lib/db';
 import { ShieldCheck, ToggleLeft, ToggleRight, RotateCcw, Search, UserCheck, ShieldAlert, CheckCircle, RefreshCw } from 'lucide-react';
 
 export default function AuditLogs({ activeRole, triggerUpdate }) {
-  const [users, setUsers] = useState([
-    { id: 'usr-1', name: 'Alina Officer', email: 'officer@jbgroup.com', role: 'officer', status: 'Active' },
-    { id: 'usr-2', name: 'Marcus Manager', email: 'manager@jbgroup.com', role: 'manager', status: 'Active' },
-    { id: 'usr-3', name: 'Brenda Boss', email: 'boss@jbgroup.com', role: 'boss', status: 'Active' },
-    { id: 'usr-4', name: 'Sam Super', email: 'super@jbgroup.com', role: 'super_admin', status: 'Active' }
-  ]);
+  const [users, setUsers] = useState(() => db.getUsers());
 
   const [auditLogs, setAuditLogs] = useState(() => db.getAuditLogs());
 
   useEffect(() => {
     const handleUpdate = () => {
       setAuditLogs(db.getAuditLogs());
+      setUsers(db.getUsers());
     };
     window.addEventListener('jb_database_updated', handleUpdate);
     return () => window.removeEventListener('jb_database_updated', handleUpdate);
@@ -23,16 +19,21 @@ export default function AuditLogs({ activeRole, triggerUpdate }) {
   const [notification, setNotification] = useState(null);
 
   const toggleUserStatus = (userId) => {
-    const list = users.map(u => {
-      if (u.id === userId) {
-        const nextStatus = u.status === 'Active' ? 'Suspended' : 'Active';
-        return { ...u, status: nextStatus };
-      }
-      return u;
-    });
-    setUsers(list);
-    setNotification(`User status updated successfully.`);
-    setTimeout(() => setNotification(null), 3000);
+    const targetUser = users.find(u => u.id === userId);
+    if (targetUser) {
+      const nextStatus = targetUser.status === 'Active' ? 'Suspended' : 'Active';
+      const updatedUser = { ...targetUser, status: nextStatus };
+      db.saveUser(updatedUser);
+
+      // Log the status toggle in audit logs
+      db.addAuditLog(
+        `${nextStatus === 'Suspended' ? 'Deactivated' : 'Activated'} User Account`,
+        `${nextStatus === 'Suspended' ? 'Suspended' : 'Activated'} access for user ${targetUser.name} (${targetUser.email})`
+      );
+
+      setNotification(`User status updated to ${nextStatus} successfully.`);
+      setTimeout(() => setNotification(null), 3000);
+    }
   };
 
   const revertAction = (logId) => {
@@ -71,6 +72,41 @@ export default function AuditLogs({ activeRole, triggerUpdate }) {
         <div>Current Active Role: <strong>{activeRole}</strong></div>
         <div>Total Logs in Database: <strong>{auditLogs.length}</strong></div>
         <div>Latest Log ID: <strong>{auditLogs[0]?.id || 'N/A'}</strong></div>
+        <div style={{ marginTop: '0.75rem' }}>
+          <button 
+            onClick={async () => {
+              if (window.confirm('Are you sure you want to clear all dummy details and reset the database? This cannot be undone.')) {
+                try {
+                  setNotification('Resetting database...');
+                  await db.clearAllData();
+                  setNotification('Database has been reset successfully! Start fresh.');
+                  triggerUpdate();
+                  setTimeout(() => setNotification(null), 3000);
+                } catch (err) {
+                  setNotification('Error resetting database: ' + err.message);
+                }
+              }
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '0.75rem',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#b91c1c'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#dc2626'}
+          >
+            🗑️ Reset Database (Start Fresh)
+          </button>
+        </div>
       </div>
       
       {notification && (

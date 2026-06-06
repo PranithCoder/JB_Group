@@ -313,6 +313,13 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         }
       });
 
+      // Calculate average completion time
+      const timedOrders = stitchedOrders.filter(o => o.work_duration_minutes);
+      const avgMinutes = timedOrders.length > 0
+        ? timedOrders.reduce((sum, o) => sum + o.work_duration_minutes, 0) / timedOrders.length
+        : 0;
+      const avgHours = avgMinutes > 0 ? (avgMinutes / 60).toFixed(1) : '—';
+
       return {
         id: s.id,
         name: s.name,
@@ -322,7 +329,8 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         monthly: monthlyCount,
         stitched_total: stitchedOrders.length,
         cut_total: cutOrders.length,
-        commission: totalCommission
+        commission: totalCommission,
+        avgHours: avgHours
       };
     });
   };
@@ -708,6 +716,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                     <th style={{ textAlign: 'center' }}>Daily Stitched</th>
                     <th style={{ textAlign: 'center' }}>Weekly Stitched</th>
                     <th style={{ textAlign: 'center' }}>Monthly Stitched</th>
+                    <th style={{ textAlign: 'center' }}>Avg Completion Time</th>
                     <th>Total Jobs</th>
                     <th style={{ fontWeight: 700, color: 'var(--color-success)' }}>Commissions (LKR)</th>
                     <th>Weekly Efficiency</th>
@@ -755,6 +764,9 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                           <span className={`badge ${tailor.monthly > 8 ? 'success' : tailor.monthly > 0 ? 'info' : 'secondary'}`} style={{ minWidth: '36px', display: 'inline-block' }}>
                             {tailor.monthly}
                           </span>
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 600 }}>
+                          {tailor.avgHours !== '—' ? `${tailor.avgHours} hrs` : '—'}
                         </td>
                         <td>
                           <div style={{ fontSize: '0.825rem' }}>
@@ -1451,6 +1463,36 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                   </div>
                 )}
               </div>
+
+              {viewingEmployeeDetails.role !== 'Store Assistant' && (
+                <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem', color: 'var(--text-primary)' }}>
+                    Order Completion Duration History
+                  </h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto' }}>
+                    {(() => {
+                      const completed = db.getOrders().filter(o => 
+                        o.assigned_staff_id === viewingEmployeeDetails.id && 
+                        (o.status === 'completed' || o.status === 'delivered')
+                      );
+                      if (completed.length === 0) {
+                        return <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>No completed orders recorded.</div>;
+                      }
+                      return completed.map(o => (
+                        <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.375rem 0.5rem', borderBottom: '1px solid #f1f5f9', fontSize: '0.825rem' }}>
+                          <div>
+                            <span style={{ fontWeight: 600 }}>{o.order_no}</span>
+                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({o.service_type} - {o.dress_type})</span>
+                          </div>
+                          <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
+                            {o.work_duration_minutes ? `${(o.work_duration_minutes / 60).toFixed(1)} hrs (${o.work_duration_minutes} mins)` : '—'}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              )}
 
             </div>
             <div className="modal-footer">

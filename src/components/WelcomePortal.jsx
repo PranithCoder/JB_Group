@@ -39,18 +39,32 @@ export default function WelcomePortal({ onLoginAdmin, onLoginTailor }) {
       return;
     }
 
-    if (emailClean === 'admin@jbgroup.com') {
-      onLoginAdmin('manager');
-    } else if (emailClean === 'josephtheepan@jbgroup.com') {
-      onLoginAdmin('boss');
-    } else if (emailClean === 'superadmin@jbgroup.com') {
-      onLoginAdmin('super_admin');
-    } else if (emailClean === 'officer@jbgroup.com') {
-      onLoginAdmin('officer');
-    } else {
+    const users = db.getUsers();
+    let matchedUser = null;
+
+    if (emailClean === 'officer@jbgroup.com') {
+      matchedUser = users.find(u => u.role === 'officer');
+    } else if (emailClean === 'admin@jbgroup.com' || emailClean === 'manager@jbgroup.com') {
+      matchedUser = users.find(u => u.role === 'manager');
+    } else if (emailClean === 'josephtheepan@jbgroup.com' || emailClean === 'boss@jbgroup.com') {
+      matchedUser = users.find(u => u.role === 'boss');
+    } else if (emailClean === 'superadmin@jbgroup.com' || emailClean === 'super@jbgroup.com') {
+      matchedUser = users.find(u => u.role === 'super_admin');
+    }
+
+    if (!matchedUser) {
       setErrorMsg('Unauthorized admin email. Please check your credentials.');
       triggerShake();
+      return;
     }
+
+    if (matchedUser.status === 'Suspended') {
+      setErrorMsg('This account has been deactivated / suspended. Please contact the administrator.');
+      triggerShake();
+      return;
+    }
+
+    onLoginAdmin(matchedUser.role);
   };
 
   const triggerShake = () => {
