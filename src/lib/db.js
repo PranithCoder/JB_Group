@@ -190,6 +190,9 @@ collectionsToSync.forEach(({ fsKey, lsKey }) => {
           if (item && item.id) {
             try {
               const cleanItem = JSON.parse(JSON.stringify(item));
+              if (fsKey === 'orders' && cleanItem.order_no === 'JB-2026-3105') {
+                cleanItem.order_no = 'JB-2026-3104';
+              }
               if (cleanItem.customer) delete cleanItem.customer;
               if (cleanItem.assignedStaff) delete cleanItem.assignedStaff;
               if (cleanItem.item) delete cleanItem.item;
@@ -208,7 +211,12 @@ collectionsToSync.forEach(({ fsKey, lsKey }) => {
 
     let list = [];
     snapshot.forEach((docSnap) => {
-      list.push(docSnap.data());
+      const data = docSnap.data();
+      if (fsKey === 'orders' && data.order_no === 'JB-2026-3105') {
+        data.order_no = 'JB-2026-3104';
+        setDoc(doc(firestore, 'orders', data.id), data).catch(err => console.error("Error migrating order 3105:", err));
+      }
+      list.push(data);
     });
 
     // Merge logic to protect local-first edits against server rollbacks or sync delays
@@ -412,7 +420,23 @@ export const db = {
   // Orders Module
   // ----------------------------------------------------
   getOrders() {
-    const orders = safeGetLocalStorage('jb_orders', []);
+    let orders = safeGetLocalStorage('jb_orders', []);
+    let updated = false;
+    orders = orders.map(ord => {
+      if (ord.order_no === 'JB-2026-3105') {
+        ord.order_no = 'JB-2026-3104';
+        updated = true;
+      }
+      return ord;
+    });
+    if (updated) {
+      localStorage.setItem('jb_orders', JSON.stringify(orders));
+      orders.forEach(ord => {
+        if (ord.order_no === 'JB-2026-3104') {
+          syncToFirestore('orders', ord);
+        }
+      });
+    }
     const customers = this.getCustomers();
     const staff = this.getStaff();
     return orders.map(ord => {
@@ -517,7 +541,18 @@ export const db = {
     } else {
       // New Order
       order.id = 'ord-' + Date.now();
-      order.order_no = 'JB-2026-' + (list.length + 3104);
+      let nextNum = 3104;
+      if (list.length > 0) {
+        const numbers = list.map(o => {
+          const match = (o.order_no || '').match(/JB-2026-(\d+)/);
+          return match ? parseInt(match[1], 10) : 0;
+        });
+        const maxNum = Math.max(...numbers);
+        if (maxNum >= 3104) {
+          nextNum = maxNum + 1;
+        }
+      }
+      order.order_no = 'JB-2026-' + nextNum;
       order.order_date = getDateOffset(0);
       if (order.status === 'completed' || order.status === 'delivered') {
         order.completed_date = getDateOffset(0);

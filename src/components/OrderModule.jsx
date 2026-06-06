@@ -173,6 +173,20 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         }
       }
 
+      let finalBillNo = formData.bill_no;
+      if (formData.status === 'delivered' && !finalBillNo) {
+        const billNo = window.prompt("Please enter the Written Bill Number for this delivery:");
+        if (billNo === null) {
+          alert("Delivery aborted. Written Bill Number is required.");
+          return;
+        }
+        if (!billNo.trim()) {
+          alert("Delivery aborted. Written Bill Number cannot be empty.");
+          return;
+        }
+        finalBillNo = billNo.trim();
+      }
+
       const payload = {
         ...(editingOrder ? { id: editingOrder.id } : {}),
         customer_id: formData.customer_id,
@@ -189,7 +203,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         assigned_staff_id: formData.assigned_staff_id,
         cutting_staff_id: formData.cutting_staff_id || '',
         cutting_status: formData.cutting_status || 'pending',
-        bill_no: formData.bill_no
+        bill_no: finalBillNo
       };
 
       const result = db.saveOrder(payload);
@@ -263,16 +277,29 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       status: newStatus
     };
 
-    if (newStatus === 'delivered' && original.payment_status !== 'paid') {
-      const balance = original.amount - (original.amount_paid || 0);
-      const confirmPaid = window.confirm(`Customer has an outstanding balance of Rs. ${balance.toFixed(2)}.\n\nMark order as FULLY PAID and complete delivery?`);
-      if (confirmPaid) {
-        payload.payment_status = 'paid';
-        payload.amount_paid = original.amount;
-      } else {
-        alert("Delivery aborted. Outstanding balance must be paid first.");
+    if (newStatus === 'delivered') {
+      if (original.payment_status !== 'paid') {
+        const balance = original.amount - (original.amount_paid || 0);
+        const confirmPaid = window.confirm(`Customer has an outstanding balance of Rs. ${balance.toFixed(2)}.\n\nMark order as FULLY PAID and complete delivery?`);
+        if (confirmPaid) {
+          payload.payment_status = 'paid';
+          payload.amount_paid = original.amount;
+        } else {
+          alert("Delivery aborted. Outstanding balance must be paid first.");
+          return;
+        }
+      }
+
+      const billNo = window.prompt("Please enter the Written Bill Number for this delivery:");
+      if (billNo === null) {
+        alert("Delivery aborted. Written Bill Number is required.");
         return;
       }
+      if (!billNo.trim()) {
+        alert("Delivery aborted. Written Bill Number cannot be empty.");
+        return;
+      }
+      payload.bill_no = billNo.trim();
     }
 
     try {
@@ -810,16 +837,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       Urgent Needed ⚡
                     </label>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Written Bill Number</label>
-                    <input 
-                      type="text"
-                      className="form-input"
-                      value={formData.bill_no || ''}
-                      onChange={e => setFormData({ ...formData, bill_no: e.target.value })}
-                      placeholder="e.g. B-9921"
-                    />
-                  </div>
+
                   <div className="form-group">
                     <label className="form-label">Quoted Price (LKR) *</label>
                     <input 
