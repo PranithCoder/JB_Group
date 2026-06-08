@@ -330,7 +330,8 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         stitched_total: stitchedOrders.length,
         cut_total: cutOrders.length,
         commission: totalCommission,
-        avgHours: avgHours
+        avgHours: avgHours,
+        stitched_orders: stitchedOrders
       };
     });
   };
@@ -718,6 +719,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                     <th style={{ textAlign: 'center' }}>Monthly Stitched</th>
                     <th style={{ textAlign: 'center' }}>Avg Completion Time</th>
                     <th>Total Jobs</th>
+                    <th>Dress & Duration History</th>
                     <th style={{ fontWeight: 700, color: 'var(--color-success)' }}>Commissions (LKR)</th>
                     <th>Weekly Efficiency</th>
                   </tr>
@@ -740,7 +742,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                       rating = 'Inactive';
                       ratingColor = '#cbd5e1';
                     }
-
+ 
                     return (
                       <tr key={tailor.id}>
                         <td>
@@ -775,6 +777,22 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                           <div style={{ fontSize: '0.825rem', marginTop: '0.125rem' }}>
                             <strong>Cut:</strong> {tailor.cut_total}
                           </div>
+                        </td>
+                        <td>
+                          {(!tailor.stitched_orders || tailor.stitched_orders.length === 0) ? (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No history</span>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: '100px', overflowY: 'auto', minWidth: '160px' }}>
+                              {tailor.stitched_orders.map(o => (
+                                <div key={o.id} style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.125rem' }}>
+                                  <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{o.dress_type}</span>
+                                  <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                                    {o.work_duration_minutes ? `${(o.work_duration_minutes / 60).toFixed(1)} hrs` : '—'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </td>
                         <td style={{ fontWeight: 700, color: 'var(--color-success)' }}>
                           Rs. {Number(tailor.commission || 0).toFixed(2)}
@@ -1486,7 +1504,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                             <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({o.service_type} - {o.dress_type})</span>
                           </div>
                           <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
-                            {o.work_duration_minutes ? `${(o.work_duration_minutes / 60).toFixed(1)} hrs (${o.work_duration_minutes} mins)` : '—'}
+                            {o.work_duration_minutes ? `${(o.work_duration_minutes / 60).toFixed(1)} hrs` : '—'}
                           </div>
                         </div>
                       ));

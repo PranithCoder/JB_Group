@@ -402,7 +402,8 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                   // Calculate elapsed time
                   if (currentActive.work_started_time) {
                     const elapsed = Math.round((new Date() - new Date(currentActive.work_started_time)) / (1000 * 60));
-                    taskDetails += ` (Elapsed: ${elapsed > 0 ? `${elapsed} mins` : 'Just started'})`;
+                    const elapsedHrs = (elapsed / 60).toFixed(1);
+                    taskDetails += ` (Elapsed: ${elapsed > 0 ? `${elapsedHrs} hrs` : 'Just started'})`;
                   }
                 } else {
                   statusText = 'Idle (Waiting)';
