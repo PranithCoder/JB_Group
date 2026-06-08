@@ -32,7 +32,7 @@ export default function Sidebar({
       id: 'dashboard', 
       label: 'Dashboard', 
       icon: LayoutDashboard, 
-      roles: ['officer', 'manager', 'boss', 'super_admin'] 
+      roles: ['manager', 'boss', 'super_admin'] 
     },
     { 
       id: 'tailor_dashboard', 
@@ -44,19 +44,19 @@ export default function Sidebar({
       id: 'customers', 
       label: 'Customers', 
       icon: Users, 
-      roles: ['officer', 'manager', 'boss', 'super_admin'] 
+      roles: ['manager', 'boss', 'super_admin'] 
     },
     { 
       id: 'orders', 
       label: 'Orders', 
       icon: ShoppingBag, 
-      roles: ['officer', 'manager', 'boss', 'super_admin']
+      roles: ['manager', 'boss', 'super_admin']
     },
     { 
       id: 'retail', 
       label: 'Retail & Accessories', 
       icon: ShoppingCart, 
-      roles: ['officer', 'manager', 'boss', 'super_admin']
+      roles: ['manager', 'boss', 'super_admin']
     },
     { 
       id: 'visits', 
@@ -88,7 +88,7 @@ export default function Sidebar({
       id: 'complaints', 
       label: 'Complaints', 
       icon: AlertTriangle, 
-      roles: ['officer', 'manager', 'boss', 'super_admin'],
+      roles: ['manager', 'boss', 'super_admin'],
       badge: (activeRole === 'manager' || activeRole === 'officer') && openComplaintsCount > 0 
         ? { count: openComplaintsCount, type: 'danger' } 
         : null

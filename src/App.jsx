@@ -40,7 +40,11 @@ function App() {
     setActiveRole(role);
     setPortalView('admin');
     localStorage.setItem('jb_portal_view', 'admin');
-    setCurrentSection('dashboard');
+    if (role === 'officer') {
+      setCurrentSection('visits');
+    } else {
+      setCurrentSection('dashboard');
+    }
   };
 
   const handleLoginTailor = (tailorId) => {
@@ -110,9 +114,9 @@ function App() {
     setActiveRole(role);
 
     // Dynamic role redirection rules:
-    // If we switch to Officer, hide modules they can't access
-    if (role === 'officer' && ['staff', 'inventory', 'approvals', 'audit'].includes(currentSection)) {
-      setCurrentSection('dashboard');
+    // If we switch to Officer, hide modules they can't access (only visits and calls allowed)
+    if (role === 'officer' && !['visits', 'calls'].includes(currentSection)) {
+      setCurrentSection('visits');
     }
     // If we switch to Manager, hide super_admin-only pages
     if (role === 'manager' && ['audit'].includes(currentSection)) {
