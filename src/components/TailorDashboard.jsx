@@ -143,14 +143,10 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
         return o.cutting_staff_id === activeTailorId;
       }
       
-      // If no cutting tailor is assigned, but a stitching tailor is assigned, only they should see it (if they can cut)
+      // If no cutting tailor is assigned, but a stitching tailor is assigned, only they should see it
       if (o.assigned_staff_id && o.assigned_staff_id !== activeTailorId) {
         return false;
       }
-      
-      // Active tailor must have capability to cut this dress type
-      const canCut = activeTailor?.cutting_skills?.includes(o.dress_type);
-      if (!canCut) return false;
     } else {
       // Order needs stitching
       if (o.assigned_staff_id) {
