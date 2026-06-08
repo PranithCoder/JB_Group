@@ -121,22 +121,22 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
   };
 
   const activeTailor = staff.find(s => s.id === activeTailorId);
-  const canCutPickingOrder = pickingUpOrder ? (pickingUpOrder.dress_type === 'alteration' || activeTailor?.cutting_skills?.includes(pickingUpOrder.dress_type)) : false;
-
+  const canCutPickingOrder = pickingUpOrder ? (activeTailor?.cutting_skills?.includes(pickingUpOrder.dress_type)) : false;
+ 
   // Check today's shift status
   const todayRecord = attendance.find(a => a.staff_id === activeTailorId && a.date === TODAY_DATE);
   const hasStartedWork = todayRecord && todayRecord.status === 'Present' && todayRecord.start_time;
   const hasEndedWork = todayRecord && todayRecord.status === 'Present' && todayRecord.end_time;
-
+ 
   // Find if tailor has an in-progress order (stitching or cutting)
   const activeOrder = orders.find(o => 
     (o.assigned_staff_id === activeTailorId && o.status === 'in-progress' && o.cutting_status === 'completed') ||
     (o.cutting_staff_id === activeTailorId && o.cutting_status === 'pending' && o.status === 'in-progress')
   );
-
+ 
   const pendingOrders = orders.filter(o => {
     if (o.status !== 'pending') return false;
-
+ 
     if (o.cutting_status === 'pending') {
       // Order needs cutting
       if (o.cutting_staff_id) {
@@ -149,7 +149,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
       }
       
       // Active tailor must have capability to cut this dress type
-      const canCut = o.dress_type === 'alteration' || activeTailor?.cutting_skills?.includes(o.dress_type);
+      const canCut = activeTailor?.cutting_skills?.includes(o.dress_type);
       if (!canCut) return false;
     } else {
       // Order needs stitching
@@ -945,12 +945,12 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                               <span style={{ fontWeight: 600 }}>Est. Comm:</span>
-                              {(ord.dress_type === 'alteration' || activeTailor.cutting_skills?.includes(ord.dress_type)) && ord.cutting_status !== 'completed' && (
+                              {activeTailor.cutting_skills?.includes(ord.dress_type) && ord.cutting_status !== 'completed' && (
                                 <span className="badge success" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem' }}>
                                   Both: Rs. {(ord.amount * 0.3).toFixed(0)}
                                 </span>
                               )}
-                              {(ord.dress_type === 'alteration' || activeTailor.cutting_skills?.includes(ord.dress_type)) && ord.cutting_status !== 'completed' && (
+                              {activeTailor.cutting_skills?.includes(ord.dress_type) && ord.cutting_status !== 'completed' && (
                                 <span className="badge info" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem' }}>
                                   Cut: Rs. {(ord.amount * 0.15).toFixed(0)}
                                 </span>
@@ -986,7 +986,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                                 }
                               } else {
                                 setPickingUpOrder(ord);
-                                const canCut = ord.dress_type === 'alteration' || activeTailor.cutting_skills?.includes(ord.dress_type);
+                                const canCut = activeTailor.cutting_skills?.includes(ord.dress_type);
                                 if (ord.cutting_status === 'completed') {
                                   setPickupType('stitching');
                                 } else if (canCut) {
@@ -1151,14 +1151,14 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                     onChange={e => setPickupCuttingTailorId(e.target.value)}
                   >
                     <option value="" disabled>Select cutting tailor...</option>
-                    {staff.filter(s => s.role !== 'Store Assistant' && (pickingUpOrder.dress_type === 'alteration' || s.cutting_skills?.includes(pickingUpOrder.dress_type))).map(s => (
+                    {staff.filter(s => s.cutting_skills?.includes(pickingUpOrder.dress_type)).map(s => (
                       <option key={s.id} value={s.id}>
                         {s.name}
                       </option>
                     ))}
                   </select>
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    {pickingUpOrder.dress_type === 'alteration' ? 'All tailors are listed for alterations.' : `Only tailors with cutting capabilities for ${pickingUpOrder.dress_type} are listed.`}
+                    Only tailors with cutting capabilities for {pickingUpOrder.dress_type} are listed.
                   </p>
                 </div>
               )}

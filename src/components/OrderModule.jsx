@@ -838,14 +838,11 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                       onChange={e => setFormData({ ...formData, assigned_staff_id: e.target.value })}
                     >
                       <option value="">Unassigned / Pending Pickup</option>
-                      {db.getStaff()
-                        .filter(s => s.role !== 'Store Assistant')
-                        .map(s => (
-                          <option key={s.id} value={s.id}>
-                            {s.name} ({s.role})
-                          </option>
-                        ))
-                      }
+                      {db.getStaff().map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.role})
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="form-group">
@@ -857,7 +854,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     >
                       <option value="">Unassigned / Pending Pickup</option>
                       {db.getStaff()
-                        .filter(s => s.role !== 'Store Assistant' && (formData.dress_type === 'alteration' || s.cutting_skills?.includes(formData.dress_type)))
+                        .filter(s => s.cutting_skills?.includes(formData.dress_type))
                         .map(s => (
                           <option key={s.id} value={s.id}>
                             {s.name} ({s.role})
@@ -877,7 +874,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                         let updatedFields = { dress_type: newDressType };
                         
                         // Check if current cutting tailor is still valid
-                        if (formData.cutting_staff_id && newDressType !== 'alteration') {
+                        if (formData.cutting_staff_id) {
                           const currentCutter = staffList.find(s => s.id === formData.cutting_staff_id);
                           if (!currentCutter || !currentCutter.cutting_skills?.includes(newDressType)) {
                             updatedFields.cutting_staff_id = '';
