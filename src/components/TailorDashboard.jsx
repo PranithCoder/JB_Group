@@ -147,6 +147,12 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
       if (o.assigned_staff_id && o.assigned_staff_id !== activeTailorId) {
         return false;
       }
+
+      // Stitching and Repairs orders needing cutting require matching cutting capability
+      if (o.service_type !== 'Alteration') {
+        const canCut = activeTailor?.cutting_skills?.includes(o.dress_type);
+        if (!canCut) return false;
+      }
     } else {
       // Order needs stitching
       if (o.assigned_staff_id) {
@@ -941,19 +947,27 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                               <span style={{ fontWeight: 600 }}>Est. Comm:</span>
-                              {activeTailor.cutting_skills?.includes(ord.dress_type) && ord.cutting_status !== 'completed' && (
+                              {ord.service_type === 'Alteration' ? (
                                 <span className="badge success" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem' }}>
-                                  Both: Rs. {(ord.amount * 0.3).toFixed(0)}
+                                  Commission: Rs. {(ord.amount * 0.3).toFixed(0)}
                                 </span>
+                              ) : (
+                                <>
+                                  {activeTailor.cutting_skills?.includes(ord.dress_type) && ord.cutting_status !== 'completed' && (
+                                    <span className="badge success" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem' }}>
+                                      Both: Rs. {(ord.amount * 0.3).toFixed(0)}
+                                    </span>
+                                  )}
+                                  {activeTailor.cutting_skills?.includes(ord.dress_type) && ord.cutting_status !== 'completed' && (
+                                    <span className="badge info" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem' }}>
+                                      Cut: Rs. {(ord.amount * 0.15).toFixed(0)}
+                                    </span>
+                                  )}
+                                  <span className="badge info" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem' }}>
+                                    Stitch: Rs. {(ord.amount * 0.15).toFixed(0)}
+                                  </span>
+                                </>
                               )}
-                              {activeTailor.cutting_skills?.includes(ord.dress_type) && ord.cutting_status !== 'completed' && (
-                                <span className="badge info" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem' }}>
-                                  Cut: Rs. {(ord.amount * 0.15).toFixed(0)}
-                                </span>
-                              )}
-                              <span className="badge info" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem' }}>
-                                Stitch: Rs. {(ord.amount * 0.15).toFixed(0)}
-                              </span>
                             </div>
                           </div>
                           <button 
