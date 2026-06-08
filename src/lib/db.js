@@ -459,6 +459,22 @@ export const db = {
     });
   },
 
+  getNextOrderNo() {
+    const list = safeGetLocalStorage('jb_orders', []);
+    let nextNum = 3104;
+    if (list.length > 0) {
+      const numbers = list.map(o => {
+        const match = (o.order_no || '').match(/JB-2026-(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+      });
+      const maxNum = Math.max(...numbers);
+      if (maxNum >= 3104) {
+        nextNum = maxNum + 1;
+      }
+    }
+    return 'JB-2026-' + nextNum;
+  },
+ 
   saveOrder(order) {
     if (order.status === 'delivered' && order.payment_status !== 'paid') {
       const balance = order.amount - (order.amount_paid || 0);
@@ -466,7 +482,7 @@ export const db = {
     }
     const role = this.getActiveRole();
     const list = safeGetLocalStorage('jb_orders', []);
-
+ 
     if (order.id) {
       const original = list.find(o => o.id === order.id);
       if (original && original.status !== order.status) {
@@ -514,7 +530,7 @@ export const db = {
         window.dispatchEvent(new Event('jb_database_updated'));
         return { status: 'pending_approval', approvalId: app.id };
       }
-
+ 
       // Execute directly
       const index = list.findIndex(o => o.id === order.id);
       if (index !== -1) {
@@ -534,18 +550,9 @@ export const db = {
     } else {
       // New Order
       order.id = 'ord-' + Date.now();
-      let nextNum = 3104;
-      if (list.length > 0) {
-        const numbers = list.map(o => {
-          const match = (o.order_no || '').match(/JB-2026-(\d+)/);
-          return match ? parseInt(match[1], 10) : 0;
-        });
-        const maxNum = Math.max(...numbers);
-        if (maxNum >= 3104) {
-          nextNum = maxNum + 1;
-        }
+      if (!order.order_no) {
+        order.order_no = this.getNextOrderNo();
       }
-      order.order_no = 'JB-2026-' + nextNum;
       order.order_date = getDateOffset(0);
       if (order.status === 'completed' || order.status === 'delivered') {
         order.completed_date = getDateOffset(0);

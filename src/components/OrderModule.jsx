@@ -760,7 +760,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3>{editingOrder ? `Edit Booked Order: ${editingOrder.order_no}` : 'Book Stitching/Alteration Order'}</h3>
+              <h3>{editingOrder ? `Edit Booked Order: ${editingOrder.order_no}` : `Book Stitching/Alteration Order (Order No: ${db.getNextOrderNo()})`}</h3>
               <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowFormModal(false)}>
                 <X size={20} />
               </button>
@@ -839,7 +839,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     >
                       <option value="">Unassigned / Pending Pickup</option>
                       {db.getStaff()
-                        .filter(s => s.role !== 'Store Assistant' && s.cutting_skills?.includes(formData.dress_type))
+                        .filter(s => s.role !== 'Store Assistant')
                         .map(s => (
                           <option key={s.id} value={s.id}>
                             {s.name} ({s.role})
@@ -857,7 +857,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     >
                       <option value="">Unassigned / Pending Pickup</option>
                       {db.getStaff()
-                        .filter(s => s.role !== 'Store Assistant' && s.cutting_skills?.includes(formData.dress_type))
+                        .filter(s => s.role !== 'Store Assistant' && (formData.dress_type === 'alteration' || s.cutting_skills?.includes(formData.dress_type)))
                         .map(s => (
                           <option key={s.id} value={s.id}>
                             {s.name} ({s.role})
@@ -876,16 +876,8 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                         const staffList = db.getStaff();
                         let updatedFields = { dress_type: newDressType };
                         
-                        // Check if current stitching tailor is still valid
-                        if (formData.assigned_staff_id) {
-                          const currentStitcher = staffList.find(s => s.id === formData.assigned_staff_id);
-                          if (!currentStitcher || !currentStitcher.cutting_skills?.includes(newDressType)) {
-                            updatedFields.assigned_staff_id = '';
-                          }
-                        }
-                        
                         // Check if current cutting tailor is still valid
-                        if (formData.cutting_staff_id) {
+                        if (formData.cutting_staff_id && newDressType !== 'alteration') {
                           const currentCutter = staffList.find(s => s.id === formData.cutting_staff_id);
                           if (!currentCutter || !currentCutter.cutting_skills?.includes(newDressType)) {
                             updatedFields.cutting_staff_id = '';

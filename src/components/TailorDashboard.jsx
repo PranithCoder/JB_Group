@@ -121,6 +121,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
   };
 
   const activeTailor = staff.find(s => s.id === activeTailorId);
+  const canCutPickingOrder = pickingUpOrder ? (pickingUpOrder.dress_type === 'alteration' || activeTailor?.cutting_skills?.includes(pickingUpOrder.dress_type)) : false;
 
   // Check today's shift status
   const todayRecord = attendance.find(a => a.staff_id === activeTailorId && a.date === TODAY_DATE);
@@ -148,17 +149,13 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
       }
       
       // Active tailor must have capability to cut this dress type
-      const canCut = activeTailor?.cutting_skills?.includes(o.dress_type);
+      const canCut = o.dress_type === 'alteration' || activeTailor?.cutting_skills?.includes(o.dress_type);
       if (!canCut) return false;
     } else {
       // Order needs stitching
       if (o.assigned_staff_id) {
         return o.assigned_staff_id === activeTailorId;
       }
-      
-      // Active tailor must have capability to stitch this dress type
-      const canStitch = activeTailor?.cutting_skills?.includes(o.dress_type);
-      if (!canStitch) return false;
     }
 
     return true;
@@ -948,12 +945,12 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                               <span style={{ fontWeight: 600 }}>Est. Comm:</span>
-                              {activeTailor.cutting_skills?.includes(ord.dress_type) && ord.cutting_status !== 'completed' && (
+                              {(ord.dress_type === 'alteration' || activeTailor.cutting_skills?.includes(ord.dress_type)) && ord.cutting_status !== 'completed' && (
                                 <span className="badge success" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem' }}>
                                   Both: Rs. {(ord.amount * 0.3).toFixed(0)}
                                 </span>
                               )}
-                              {activeTailor.cutting_skills?.includes(ord.dress_type) && ord.cutting_status !== 'completed' && (
+                              {(ord.dress_type === 'alteration' || activeTailor.cutting_skills?.includes(ord.dress_type)) && ord.cutting_status !== 'completed' && (
                                 <span className="badge info" style={{ fontSize: '0.65rem', padding: '0.05rem 0.3rem' }}>
                                   Cut: Rs. {(ord.amount * 0.15).toFixed(0)}
                                 </span>
@@ -989,7 +986,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                                 }
                               } else {
                                 setPickingUpOrder(ord);
-                                const canCut = activeTailor.cutting_skills?.includes(ord.dress_type);
+                                const canCut = ord.dress_type === 'alteration' || activeTailor.cutting_skills?.includes(ord.dress_type);
                                 if (ord.cutting_status === 'completed') {
                                   setPickupType('stitching');
                                 } else if (canCut) {
@@ -1048,8 +1045,8 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                   padding: '0.75rem', 
                   border: '1px solid var(--border-light)', 
                   borderRadius: '6px', 
-                  cursor: (activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) && pickingUpOrder.cutting_status !== 'completed') ? 'pointer' : 'not-allowed',
-                  opacity: (activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) && pickingUpOrder.cutting_status !== 'completed') ? 1 : 0.5,
+                  cursor: (canCutPickingOrder && pickingUpOrder.cutting_status !== 'completed') ? 'pointer' : 'not-allowed',
+                  opacity: (canCutPickingOrder && pickingUpOrder.cutting_status !== 'completed') ? 1 : 0.5,
                   backgroundColor: pickupType === 'both' ? 'var(--color-primary-light)' : 'transparent',
                   borderColor: pickupType === 'both' ? 'var(--color-primary)' : 'var(--border-light)'
                 }}>
@@ -1058,7 +1055,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                     name="pickupType" 
                     value="both" 
                     checked={pickupType === 'both'}
-                    disabled={!activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) || pickingUpOrder.cutting_status === 'completed'}
+                    disabled={!canCutPickingOrder || pickingUpOrder.cutting_status === 'completed'}
                     onChange={() => setPickupType('both')}
                   />
                   <div>
@@ -1066,7 +1063,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       You cut and stitch. Earns Rs. ${(pickingUpOrder.amount * 0.3).toFixed(2)} commission (30%).
                     </span>
-                    {!activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) && (
+                    {!canCutPickingOrder && (
                       <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 600, marginTop: '0.125rem' }}>
                         ⚠️ Lacks cutting capability for {pickingUpOrder.dress_type}
                       </span>
@@ -1078,7 +1075,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                     )}
                   </div>
                 </label>
-
+ 
                 {/* Cutting Only Option */}
                 {pickingUpOrder.cutting_status !== 'completed' && (
                   <label style={{ 
@@ -1088,8 +1085,8 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                     padding: '0.75rem', 
                     border: '1px solid var(--border-light)', 
                     borderRadius: '6px', 
-                    cursor: (activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type)) ? 'pointer' : 'not-allowed',
-                    opacity: (activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type)) ? 1 : 0.5,
+                    cursor: (canCutPickingOrder) ? 'pointer' : 'not-allowed',
+                    opacity: (canCutPickingOrder) ? 1 : 0.5,
                     backgroundColor: pickupType === 'cutting' ? 'var(--color-primary-light)' : 'transparent',
                     borderColor: pickupType === 'cutting' ? 'var(--color-primary)' : 'var(--border-light)'
                   }}>
@@ -1098,7 +1095,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                       name="pickupType" 
                       value="cutting" 
                       checked={pickupType === 'cutting'}
-                      disabled={!activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type)}
+                      disabled={!canCutPickingOrder}
                       onChange={() => setPickupType('cutting')}
                     />
                     <div>
@@ -1106,7 +1103,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         Only cut fabric. Earns Rs. ${(pickingUpOrder.amount * 0.15).toFixed(2)} commission (15%).
                       </span>
-                      {!activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) && (
+                      {!canCutPickingOrder && (
                         <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 600, marginTop: '0.125rem' }}>
                           ⚠️ Lacks cutting capability for {pickingUpOrder.dress_type}
                         </span>
@@ -1114,7 +1111,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                     </div>
                   </label>
                 )}
-
+ 
                 {/* Stitching Only Option */}
                 <label style={{ 
                   display: 'flex', 
@@ -1142,7 +1139,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                   </div>
                 </label>
               </div>
-
+ 
               {/* If Stitching Only and cutting is not completed, select who did the cutting */}
               {pickupType === 'stitching' && pickingUpOrder.cutting_status !== 'completed' && (
                 <div className="form-group" style={{ marginTop: '0.5rem' }}>
@@ -1154,14 +1151,14 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                     onChange={e => setPickupCuttingTailorId(e.target.value)}
                   >
                     <option value="" disabled>Select cutting tailor...</option>
-                    {staff.filter(s => s.role !== 'Store Assistant' && s.cutting_skills?.includes(pickingUpOrder.dress_type)).map(s => (
+                    {staff.filter(s => s.role !== 'Store Assistant' && (pickingUpOrder.dress_type === 'alteration' || s.cutting_skills?.includes(pickingUpOrder.dress_type))).map(s => (
                       <option key={s.id} value={s.id}>
                         {s.name}
                       </option>
                     ))}
                   </select>
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    Only tailors with cutting capabilities for {pickingUpOrder.dress_type} are listed.
+                    {pickingUpOrder.dress_type === 'alteration' ? 'All tailors are listed for alterations.' : `Only tailors with cutting capabilities for ${pickingUpOrder.dress_type} are listed.`}
                   </p>
                 </div>
               )}
