@@ -1482,6 +1482,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                         <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.375rem 0.5rem', borderBottom: '1px solid #f1f5f9', fontSize: '0.825rem' }}>
                           <div>
                             <span style={{ fontWeight: 600 }}>{o.order_no}</span>
+                            {o.bill_no && <span style={{ color: 'var(--text-muted)', marginLeft: '0.375rem', fontSize: '0.775rem' }}>[Bill: {o.bill_no}]</span>}
                             <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({o.service_type} - {o.dress_type})</span>
                           </div>
                           <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>

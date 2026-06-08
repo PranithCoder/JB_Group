@@ -532,7 +532,10 @@ export default function CustomerModule({ activeRole, triggerUpdate }) {
                         ) : (
                           viewingHistory.orders.map(o => (
                             <tr key={o.id}>
-                              <td style={{ fontWeight: 600 }}>{o.order_no}</td>
+                              <td style={{ fontWeight: 600 }}>
+                                <div>{o.order_no}</div>
+                                {o.bill_no && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '0.125rem' }}>Bill: {o.bill_no}</div>}
+                              </td>
                               <td>{o.order_date}</td>
                               <td>{o.delivery_date}</td>
                               <td>{o.service_type}</td>
