@@ -129,27 +129,31 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
 
   // Find if tailor has an in-progress order (stitching or cutting)
   const activeOrder = orders.find(o => 
-    (o.assigned_staff_id === activeTailorId && o.status === 'in-progress') ||
+    (o.assigned_staff_id === activeTailorId && o.status === 'in-progress' && o.cutting_status === 'completed') ||
     (o.cutting_staff_id === activeTailorId && o.cutting_status === 'pending' && o.status === 'in-progress')
   );
 
   const pendingOrders = orders.filter(o => {
     if (o.status !== 'pending') return false;
 
-    // If an overall tailor is assigned, only that tailor can see it
-    if (o.assigned_staff_id && o.assigned_staff_id !== activeTailorId) {
-      return false;
-    }
-
     if (o.cutting_status === 'pending') {
       // Order needs cutting
-      if (o.cutting_staff_id && o.cutting_staff_id !== activeTailorId) {
-        return false; // Assigned to another cutting tailor
+      if (o.cutting_staff_id) {
+        return o.cutting_staff_id === activeTailorId;
       }
+      
+      // If no cutting tailor is assigned, but a stitching tailor is assigned, only they should see it (if they can cut)
+      if (o.assigned_staff_id && o.assigned_staff_id !== activeTailorId) {
+        return false;
+      }
+      
+      // Active tailor must have capability to cut this dress type
+      const canCut = activeTailor?.cutting_skills?.includes(o.dress_type);
+      if (!canCut) return false;
     } else {
       // Order needs stitching
-      if (o.assigned_staff_id && o.assigned_staff_id !== activeTailorId) {
-        return false; // Assigned to another stitching tailor
+      if (o.assigned_staff_id) {
+        return o.assigned_staff_id === activeTailorId;
       }
     }
 
@@ -614,7 +618,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             {hasPendingShortLeave && (
               <span className="badge warning" style={{ padding: '0.4rem 0.75rem', fontSize: '0.775rem' }}>
                 ⚠️ Short Leave: Pending Approval...
