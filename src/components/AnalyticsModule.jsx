@@ -122,7 +122,10 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
     retailSales.reduce((sum, s) => sum + s.total_price, 0);
 
   const cashIn = orders
-    .filter(o => o.status !== 'cancelled' && isWithinTimeframe(o.order_date, cashflowTimeframe))
+    .filter(o => o.status !== 'cancelled' && isWithinTimeframe(
+      (o.status === 'completed' || o.status === 'delivered') ? (o.completed_date || o.order_date) : o.order_date,
+      cashflowTimeframe
+    ))
     .reduce((sum, o) => {
       if (o.payment_status === 'paid') return sum + o.amount;
       if (o.payment_status === 'partially_paid') return sum + (o.amount_paid || 0);
@@ -212,7 +215,8 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
 
       orders.forEach(o => {
         if (o.status === 'cancelled') return;
-        const oDate = new Date(o.order_date);
+        const targetDateStr = (o.status === 'completed' || o.status === 'delivered') ? (o.completed_date || o.order_date) : o.order_date;
+        const oDate = new Date(targetDateStr);
         const diffDays = Math.round((refDate - oDate) / (1000 * 60 * 60 * 24));
         if (diffDays >= w.start && diffDays <= w.end) {
           if (o.payment_status === 'paid') cashInVal += o.amount;
