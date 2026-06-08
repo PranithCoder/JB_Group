@@ -831,18 +831,39 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Assign Tailor (Optional)</label>
+                    <label className="form-label">Assign Stitching Tailor (Optional)</label>
                     <select 
                       className="form-select"
                       value={formData.assigned_staff_id}
                       onChange={e => setFormData({ ...formData, assigned_staff_id: e.target.value })}
                     >
                       <option value="">Unassigned / Pending Pickup</option>
-                      {db.getStaff().map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} ({s.role})
-                        </option>
-                      ))}
+                      {db.getStaff()
+                        .filter(s => s.role !== 'Store Assistant' && s.cutting_skills?.includes(formData.dress_type))
+                        .map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({s.role})
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Assign Cutting Tailor (Optional)</label>
+                    <select 
+                      className="form-select"
+                      value={formData.cutting_staff_id}
+                      onChange={e => setFormData({ ...formData, cutting_staff_id: e.target.value })}
+                    >
+                      <option value="">Unassigned / Pending Pickup</option>
+                      {db.getStaff()
+                        .filter(s => s.role !== 'Store Assistant' && s.cutting_skills?.includes(formData.dress_type))
+                        .map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({s.role})
+                          </option>
+                        ))
+                      }
                     </select>
                   </div>
                   <div className="form-group">
@@ -850,7 +871,29 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     <select 
                       className="form-select"
                       value={formData.dress_type || 'modern dress (Custom)'}
-                      onChange={e => setFormData({ ...formData, dress_type: e.target.value })}
+                      onChange={e => {
+                        const newDressType = e.target.value;
+                        const staffList = db.getStaff();
+                        let updatedFields = { dress_type: newDressType };
+                        
+                        // Check if current stitching tailor is still valid
+                        if (formData.assigned_staff_id) {
+                          const currentStitcher = staffList.find(s => s.id === formData.assigned_staff_id);
+                          if (!currentStitcher || !currentStitcher.cutting_skills?.includes(newDressType)) {
+                            updatedFields.assigned_staff_id = '';
+                          }
+                        }
+                        
+                        // Check if current cutting tailor is still valid
+                        if (formData.cutting_staff_id) {
+                          const currentCutter = staffList.find(s => s.id === formData.cutting_staff_id);
+                          if (!currentCutter || !currentCutter.cutting_skills?.includes(newDressType)) {
+                            updatedFields.cutting_staff_id = '';
+                          }
+                        }
+                        
+                        setFormData({ ...formData, ...updatedFields });
+                      }}
                     >
                       {DRESS_TYPES.map(type => (
                         <option key={type} value={type}>

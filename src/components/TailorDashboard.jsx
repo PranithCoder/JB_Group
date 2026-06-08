@@ -155,6 +155,10 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
       if (o.assigned_staff_id) {
         return o.assigned_staff_id === activeTailorId;
       }
+      
+      // Active tailor must have capability to stitch this dress type
+      const canStitch = activeTailor?.cutting_skills?.includes(o.dress_type);
+      if (!canStitch) return false;
     }
 
     return true;
@@ -1074,6 +1078,42 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
                     )}
                   </div>
                 </label>
+
+                {/* Cutting Only Option */}
+                {pickingUpOrder.cutting_status !== 'completed' && (
+                  <label style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.75rem', 
+                    padding: '0.75rem', 
+                    border: '1px solid var(--border-light)', 
+                    borderRadius: '6px', 
+                    cursor: (activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type)) ? 'pointer' : 'not-allowed',
+                    opacity: (activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type)) ? 1 : 0.5,
+                    backgroundColor: pickupType === 'cutting' ? 'var(--color-primary-light)' : 'transparent',
+                    borderColor: pickupType === 'cutting' ? 'var(--color-primary)' : 'var(--border-light)'
+                  }}>
+                    <input 
+                      type="radio" 
+                      name="pickupType" 
+                      value="cutting" 
+                      checked={pickupType === 'cutting'}
+                      disabled={!activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type)}
+                      onChange={() => setPickupType('cutting')}
+                    />
+                    <div>
+                      <strong style={{ display: 'block', fontSize: '0.875rem' }}>Cutting Only</strong>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Only cut fabric. Earns Rs. ${(pickingUpOrder.amount * 0.15).toFixed(2)} commission (15%).
+                      </span>
+                      {!activeTailor.cutting_skills?.includes(pickingUpOrder.dress_type) && (
+                        <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 600, marginTop: '0.125rem' }}>
+                          ⚠️ Lacks cutting capability for {pickingUpOrder.dress_type}
+                        </span>
+                      )}
+                    </div>
+                  </label>
+                )}
 
                 {/* Stitching Only Option */}
                 <label style={{ 
