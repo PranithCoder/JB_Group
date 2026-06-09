@@ -182,6 +182,13 @@ const collectionsToSync = [
 collectionsToSync.forEach(({ fsKey, lsKey }) => {
   const colRef = collection(firestore, fsKey);
   onSnapshot(colRef, (snapshot) => {
+    // Skip updating localStorage if there are pending local writes to Firestore.
+    // This prevents race conditions where a partial batch save triggers a snapshot
+    // that overwrites localStorage with stale data before all writes complete.
+    if (snapshot.metadata?.hasPendingWrites) {
+      return;
+    }
+
     if (snapshot.empty) {
       const localData = safeGetLocalStorage(lsKey, []);
       if (localData.length > 0) {
@@ -212,7 +219,7 @@ collectionsToSync.forEach(({ fsKey, lsKey }) => {
     });
 
     // Merge logic to protect local-first edits against server rollbacks or sync delays
-    if (lsKey === 'jb_audit_logs' || lsKey === 'jb_retail_inventory') {
+    if (lsKey === 'jb_audit_logs' || lsKey === 'jb_retail_inventory' || lsKey === 'jb_attendance') {
       const localData = safeGetLocalStorage(lsKey, []);
       const merged = [...list];
       localData.forEach(localItem => {
@@ -710,6 +717,54 @@ export const db = {
     window.dispatchEvent(new Event('jb_database_updated'));
     return savedRecord || record;
   },
+
+  saveMultipleAttendance(records) {
+    if (!records || records.length === 0) return [];
+    const list = this.getAttendance();
+    const savedRecords = [];
+    const staffList = this.getStaff();
+    let staffUpdated = false;
+
+    records.forEach(record => {
+      const index = list.findIndex(r => r.staff_id === record.staff_id && r.date === record.date);
+
+      // If changing to Absent with leave_type, adjust staff leave balances (if new absence record)
+      if (record.status === 'Absent' && record.leave_type) {
+        const existingRecord = index !== -1 ? list[index] : null;
+        if (!existingRecord || existingRecord.status !== 'Absent') {
+          const staffIndex = staffList.findIndex(s => s.id === record.staff_id);
+          if (staffIndex !== -1 && staffList[staffIndex].leaves && staffList[staffIndex].leaves[record.leave_type] > 0) {
+            staffList[staffIndex].leaves[record.leave_type] -= 1;
+            syncToFirestore('staff', staffList[staffIndex]);
+            staffUpdated = true;
+          }
+        }
+      }
+
+      if (index !== -1) {
+        list[index] = { ...list[index], ...record };
+        savedRecords.push(list[index]);
+      } else {
+        record.id = `att-${record.staff_id}-${record.date}`;
+        list.push(record);
+        savedRecords.push(record);
+      }
+    });
+
+    localStorage.setItem('jb_attendance', JSON.stringify(list));
+    if (staffUpdated) {
+      localStorage.setItem('jb_staff', JSON.stringify(staffList));
+    }
+
+    // Sync all records asynchronously
+    savedRecords.forEach(rec => {
+      syncToFirestore('attendance', rec);
+    });
+
+    window.dispatchEvent(new Event('jb_database_updated'));
+    return savedRecords;
+  },
+
 
   generateMonthlyPayroll(monthYearString) {
     const staff = this.getStaff();

@@ -337,9 +337,11 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
   };
 
   const submitAttendance = () => {
-    let successCount = 0;
     const allAttendance = db.getAttendance();
     const currentStaff = db.getStaff();
+    const recordsToSave = [];
+    const logDetails = [];
+    let containsManualClockOut = false;
 
     Object.keys(attendanceLog).forEach(staffId => {
       const log = attendanceLog[staffId];
@@ -366,7 +368,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         (original.short_leave_duration || 0) !== newShortLeave;
 
       if (isChanged) {
-        db.saveAttendance({
+        recordsToSave.push({
           staff_id: staffId,
           date: selectedDate,
           hours_worked: newHours,
@@ -377,49 +379,53 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
           short_leave_duration: newShortLeave
         });
 
-        // Construct audit log message
-        let action = `Manual Attendance Edit`;
-        let details = `Adjusted attendance for ${empName} on ${selectedDate}.`;
-        
-        const detailsArr = [];
+        // Track what changed for the audit log
+        const changeDesc = [];
         if (!original) {
-          detailsArr.push(`Created record: Status=${newStatus}, Start=${newStart || '—'}, End=${newEnd || '—'}, Hours=${newHours}`);
+          changeDesc.push(`Logged status Present, hours=${newHours}`);
         } else {
           if (original.status !== newStatus) {
-            detailsArr.push(`Status changed from ${original.status} to ${newStatus}`);
+            changeDesc.push(`Status changed from ${original.status} to ${newStatus}`);
           }
           if (original.start_time !== newStart) {
-            detailsArr.push(`Start Time changed from "${original.start_time || '—'}" to "${newStart || '—'}"`);
+            changeDesc.push(`Start from "${original.start_time || '—'}" to "${newStart || '—'}"`);
           }
           if (original.end_time !== newEnd) {
             if (!original.end_time && newEnd) {
-              action = `Manual Clock-Out`;
-              detailsArr.push(`Clocked out manually at "${newEnd}"`);
+              containsManualClockOut = true;
+              changeDesc.push(`Clocked out manually at "${newEnd}"`);
             } else {
-              detailsArr.push(`End Time changed from "${original.end_time || '—'}" to "${newEnd || '—'}"`);
+              changeDesc.push(`End from "${original.end_time || '—'}" to "${newEnd || '—'}"`);
             }
           }
           if (original.hours_worked !== newHours) {
-            detailsArr.push(`Hours worked changed from ${original.hours_worked} to ${newHours}`);
+            changeDesc.push(`Hours from ${original.hours_worked} to ${newHours}`);
           }
           if (original.leave_type !== newLeaveType) {
-            detailsArr.push(`Leave Tag changed from "${original.leave_type || '—'}" to "${newLeaveType || '—'}"`);
+            changeDesc.push(`Leave Tag from "${original.leave_type || '—'}" to "${newLeaveType || '—'}"`);
           }
           if ((original.short_leave_duration || 0) !== newShortLeave) {
-            detailsArr.push(`Short Leave changed from ${original.short_leave_duration || 0} to ${newShortLeave}`);
+            changeDesc.push(`Short Leave from ${original.short_leave_duration || 0} to ${newShortLeave}`);
           }
         }
 
-        if (detailsArr.length > 0) {
-          details += ` Changes: ${detailsArr.join(', ')}`;
+        if (changeDesc.length > 0) {
+          logDetails.push(`${empName} (${changeDesc.join(', ')})`);
         }
-
-        db.addAuditLog(action, details);
       }
-      successCount++;
     });
 
-    alert(`Successfully logged/updated attendance for ${successCount} employees on ${selectedDate}.`);
+    if (recordsToSave.length > 0) {
+      db.saveMultipleAttendance(recordsToSave);
+
+      if (logDetails.length > 0) {
+        const action = containsManualClockOut ? 'Manual Clock-Out' : 'Manual Attendance Edit';
+        const details = `Manually updated attendance on ${selectedDate}: ${logDetails.join('; ')}`;
+        db.addAuditLog(action, details);
+      }
+    }
+
+    alert(`Successfully logged/updated attendance for ${recordsToSave.length} records on ${selectedDate}.`);
     refreshData();
     triggerUpdate();
   };
