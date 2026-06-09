@@ -26,6 +26,82 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
     return age >= 0 ? age : 0;
   };
 
+  const convertTo24Hour = (timeStr) => {
+    if (!timeStr) return '';
+    if (/^\d{2}:\d{2}$/.test(timeStr)) return timeStr;
+    try {
+      const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+      if (match) {
+        let hours = parseInt(match[1], 10);
+        const minutes = match[2];
+        const ampm = match[3];
+        if (ampm) {
+          if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12;
+          if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0;
+        }
+        return `${String(hours).padStart(2, '0')}:${minutes}`;
+      }
+      const parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        let hours = parseInt(parts[0], 10);
+        const minutes = parts[1].substring(0, 2);
+        if (timeStr.toLowerCase().includes('pm') && hours < 12) hours += 12;
+        if (timeStr.toLowerCase().includes('am') && hours === 12) hours = 0;
+        return `${String(hours).padStart(2, '0')}:${minutes}`;
+      }
+    } catch (e) {
+      console.error("Error converting time to 24-hour:", timeStr, e);
+    }
+    return timeStr;
+  };
+
+  const calculateHoursBetween = (timeStr1, timeStr2, dateStr) => {
+    try {
+      if (!timeStr1 || !timeStr2) return 0;
+      const parseTime = (str) => {
+        const normalized = convertTo24Hour(str);
+        const parts = normalized.split(':');
+        let hour = parseInt(parts[0], 10);
+        let min = parseInt(parts[1].substring(0, 2), 10);
+        const d = new Date(dateStr || TODAY_DATE);
+        d.setHours(hour, min, 0, 0);
+        return d;
+      };
+      const d1 = parseTime(timeStr1);
+      const d2 = parseTime(timeStr2);
+      let diffMs = d2 - d1;
+      if (diffMs < 0) {
+        diffMs += 24 * 60 * 60 * 1000;
+      }
+      const diffHrs = diffMs / (1000 * 60 * 60);
+      return Math.max(0, Math.round(diffHrs * 10) / 10);
+    } catch (e) {
+      console.error("Error calculating hours between:", timeStr1, timeStr2, e);
+      return 0;
+    }
+  };
+
+  const formatHoursToHrsMins = (hoursDecimal) => {
+    if (hoursDecimal === undefined || hoursDecimal === null || isNaN(hoursDecimal)) return '—';
+    const hrs = Math.floor(hoursDecimal);
+    const mins = Math.round((hoursDecimal - hrs) * 60);
+    if (hrs === 0 && mins === 0) return '0 minutes';
+    if (hrs === 0) return `${mins} minutes`;
+    if (mins === 0) return `${hrs} hrs`;
+    return `${hrs} hrs ${mins} minutes`;
+  };
+
+  const formatMinutesToHrsMins = (minutes) => {
+    if (!minutes || isNaN(minutes)) return '—';
+    const hrs = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    if (hrs === 0 && mins === 0) return '0 minutes';
+    if (hrs === 0) return `${mins} minutes`;
+    if (mins === 0) return `${hrs} hrs`;
+    return `${hrs} hrs ${mins} minutes`;
+  };
+
+
   // Roster form fields
   const [rosterForm, setRosterForm] = useState({
     name: '',
@@ -64,8 +140,8 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         hours_worked: match ? match.hours_worked : 8,
         status: match ? match.status : 'Present',
         leave_type: match ? match.leave_type : '',
-        start_time: match ? match.start_time : '',
-        end_time: match ? match.end_time : '',
+        start_time: match ? convertTo24Hour(match.start_time) : '',
+        end_time: match ? convertTo24Hour(match.end_time) : '',
         short_leave_duration: match ? (match.short_leave_duration || 0) : 0
       };
     });
@@ -87,8 +163,8 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         hours_worked: match ? match.hours_worked : 8,
         status: match ? match.status : 'Present',
         leave_type: match ? match.leave_type : '',
-        start_time: match ? match.start_time : '',
-        end_time: match ? match.end_time : '',
+        start_time: match ? convertTo24Hour(match.start_time) : '',
+        end_time: match ? convertTo24Hour(match.end_time) : '',
         short_leave_duration: match ? (match.short_leave_duration || 0) : 0
       };
     });
@@ -106,8 +182,8 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         hours_worked: match ? match.hours_worked : 8,
         status: match ? match.status : 'Present',
         leave_type: match ? match.leave_type : '',
-        start_time: match ? match.start_time : '',
-        end_time: match ? match.end_time : '',
+        start_time: match ? convertTo24Hour(match.start_time) : '',
+        end_time: match ? convertTo24Hour(match.end_time) : '',
         short_leave_duration: match ? (match.short_leave_duration || 0) : 0
       };
     });
@@ -247,27 +323,103 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
         }
       }
 
+      if (field === 'start_time' || field === 'end_time') {
+        if (updatedItem.start_time && updatedItem.end_time) {
+          const calculatedHours = calculateHoursBetween(updatedItem.start_time, updatedItem.end_time, selectedDate);
+          const shortLeave = Number(updatedItem.short_leave_duration || 0);
+          const workingHours = Math.max(0, calculatedHours - shortLeave);
+          updatedItem.hours_worked = Math.max(0.5, Math.round(workingHours * 10) / 10);
+        }
+      }
+
       return { ...prev, [staffId]: updatedItem };
     });
   };
 
   const submitAttendance = () => {
     let successCount = 0;
+    const allAttendance = db.getAttendance();
+    const currentStaff = db.getStaff();
+
     Object.keys(attendanceLog).forEach(staffId => {
       const log = attendanceLog[staffId];
-      db.saveAttendance({
-        staff_id: staffId,
-        date: selectedDate,
-        hours_worked: Number(log.hours_worked),
-        status: log.status,
-        leave_type: log.status === 'Absent' ? log.leave_type : '',
-        start_time: log.start_time || '',
-        end_time: log.end_time || '',
-        short_leave_duration: Number(log.short_leave_duration || 0)
-      });
+      const emp = currentStaff.find(s => s.id === staffId);
+      const empName = emp ? emp.name : staffId;
+
+      // Find the original attendance record if any
+      const original = allAttendance.find(a => a.staff_id === staffId && a.date === selectedDate);
+      
+      const newHours = Number(log.hours_worked);
+      const newStatus = log.status;
+      const newLeaveType = log.status === 'Absent' ? log.leave_type : '';
+      const newStart = log.start_time || '';
+      const newEnd = log.end_time || '';
+      const newShortLeave = Number(log.short_leave_duration || 0);
+
+      // Check if anything changed
+      const isChanged = !original ||
+        original.status !== newStatus ||
+        original.hours_worked !== newHours ||
+        original.start_time !== newStart ||
+        original.end_time !== newEnd ||
+        original.leave_type !== newLeaveType ||
+        (original.short_leave_duration || 0) !== newShortLeave;
+
+      if (isChanged) {
+        db.saveAttendance({
+          staff_id: staffId,
+          date: selectedDate,
+          hours_worked: newHours,
+          status: newStatus,
+          leave_type: newLeaveType,
+          start_time: newStart,
+          end_time: newEnd,
+          short_leave_duration: newShortLeave
+        });
+
+        // Construct audit log message
+        let action = `Manual Attendance Edit`;
+        let details = `Adjusted attendance for ${empName} on ${selectedDate}.`;
+        
+        const detailsArr = [];
+        if (!original) {
+          detailsArr.push(`Created record: Status=${newStatus}, Start=${newStart || '—'}, End=${newEnd || '—'}, Hours=${newHours}`);
+        } else {
+          if (original.status !== newStatus) {
+            detailsArr.push(`Status changed from ${original.status} to ${newStatus}`);
+          }
+          if (original.start_time !== newStart) {
+            detailsArr.push(`Start Time changed from "${original.start_time || '—'}" to "${newStart || '—'}"`);
+          }
+          if (original.end_time !== newEnd) {
+            if (!original.end_time && newEnd) {
+              action = `Manual Clock-Out`;
+              detailsArr.push(`Clocked out manually at "${newEnd}"`);
+            } else {
+              detailsArr.push(`End Time changed from "${original.end_time || '—'}" to "${newEnd || '—'}"`);
+            }
+          }
+          if (original.hours_worked !== newHours) {
+            detailsArr.push(`Hours worked changed from ${original.hours_worked} to ${newHours}`);
+          }
+          if (original.leave_type !== newLeaveType) {
+            detailsArr.push(`Leave Tag changed from "${original.leave_type || '—'}" to "${newLeaveType || '—'}"`);
+          }
+          if ((original.short_leave_duration || 0) !== newShortLeave) {
+            detailsArr.push(`Short Leave changed from ${original.short_leave_duration || 0} to ${newShortLeave}`);
+          }
+        }
+
+        if (detailsArr.length > 0) {
+          details += ` Changes: ${detailsArr.join(', ')}`;
+        }
+
+        db.addAuditLog(action, details);
+      }
       successCount++;
     });
-    alert(`Successfully logged attendance for ${successCount} employees on ${selectedDate}.`);
+
+    alert(`Successfully logged/updated attendance for ${successCount} employees on ${selectedDate}.`);
     refreshData();
     triggerUpdate();
   };
@@ -318,7 +470,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       const avgMinutes = timedOrders.length > 0
         ? timedOrders.reduce((sum, o) => sum + o.work_duration_minutes, 0) / timedOrders.length
         : 0;
-      const avgHours = avgMinutes > 0 ? (avgMinutes / 60).toFixed(1) : '—';
+      const avgHours = avgMinutes > 0 ? formatMinutesToHrsMins(avgMinutes) : '—';
 
       return {
         id: s.id,
@@ -519,18 +671,52 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                         <td><span className="badge info">{emp.role}</span></td>
                         <td>
                           {log.status === 'Present' ? (
-                            <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
-                              {log.start_time || '08:30'}
-                            </span>
+                            <input 
+                              type="time"
+                              disabled={isReadOnly}
+                              className="form-input"
+                              style={{ width: '120px', padding: '0.375rem 0.5rem' }}
+                              value={log.start_time || ''}
+                              onChange={e => handleAttendanceChange(emp.id, 'start_time', e.target.value)}
+                            />
                           ) : (
                             <span style={{ color: 'var(--text-muted)' }}>—</span>
                           )}
                         </td>
                         <td>
                           {log.status === 'Present' ? (
-                            <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
-                              {log.end_time || '—'}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                              <input 
+                                type="time"
+                                disabled={isReadOnly}
+                                className="form-input"
+                                style={{ width: '120px', padding: '0.375rem 0.5rem' }}
+                                value={log.end_time || ''}
+                                onChange={e => handleAttendanceChange(emp.id, 'end_time', e.target.value)}
+                              />
+                              {!log.end_time && (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ 
+                                    padding: '0.25rem 0.5rem', 
+                                    fontSize: '0.75rem', 
+                                    whiteSpace: 'nowrap',
+                                    backgroundColor: 'var(--color-primary-light)',
+                                    color: 'var(--color-primary)',
+                                    border: '1px solid var(--color-primary-light)'
+                                  }}
+                                  onClick={() => {
+                                    const now = new Date();
+                                    const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                                    handleAttendanceChange(emp.id, 'end_time', nowStr);
+                                  }}
+                                  title="Clock Out Tailor Now"
+                                >
+                                  Clock Out
+                                </button>
+                              )}
+                            </div>
                           ) : (
                             <span style={{ color: 'var(--text-muted)' }}>—</span>
                           )}
@@ -550,7 +736,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                         <td>
                           {log.status === 'Present' ? (
                             <span style={{ fontWeight: 600, color: 'var(--color-warning)' }}>
-                              {log.short_leave_duration ? `${log.short_leave_duration} hrs` : '0 hrs'}
+                              {log.short_leave_duration ? formatHoursToHrsMins(log.short_leave_duration) : '0 minutes'}
                             </span>
                           ) : (
                             <span style={{ color: 'var(--text-muted)' }}>—</span>
@@ -645,10 +831,10 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sheet.role}</div>
                       </td>
                       <td>Rs. {Number(sheet.basic_salary || 0).toFixed(2)}</td>
-                      <td>{sheet.total_hours} hrs</td>
+                      <td>{formatHoursToHrsMins(sheet.total_hours)}</td>
                       <td>
                         <span className={sheet.overtime_hours > 0 ? 'text-green' : ''} style={{ fontWeight: sheet.overtime_hours > 0 ? '600' : 'normal' }}>
-                          {sheet.overtime_hours} hrs
+                          {formatHoursToHrsMins(sheet.overtime_hours)}
                         </span>
                       </td>
                       <td>
@@ -768,7 +954,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                           </span>
                         </td>
                         <td style={{ textAlign: 'center', fontWeight: 600 }}>
-                          {tailor.avgHours !== '—' ? `${tailor.avgHours} hrs` : '—'}
+                          {tailor.avgHours}
                         </td>
                         <td>
                           <div style={{ fontSize: '0.825rem' }}>
@@ -787,7 +973,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                                 <div key={o.id} style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.125rem' }}>
                                   <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{o.dress_type}</span>
                                   <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
-                                    {o.work_duration_minutes ? `${(o.work_duration_minutes / 60).toFixed(1)} hrs` : '—'}
+                                    {o.work_duration_minutes ? formatMinutesToHrsMins(o.work_duration_minutes) : '—'}
                                   </span>
                                 </div>
                               ))}
@@ -1231,11 +1417,11 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem', borderBottom: '1px dashed var(--border-light)', paddingBottom: '1rem', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Total Hours Logged:</span>
-                  <span>{viewingPayslip.total_hours} hrs</span>
+                  <span>{formatHoursToHrsMins(viewingPayslip.total_hours)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Overtime Premium:</span>
-                  <span className="text-green">+Rs. {(Number(viewingPayslip.overtime_hours * (viewingPayslip.basic_salary / 240) * 1.5 || 0)).toFixed(2)} ({viewingPayslip.overtime_hours}h)</span>
+                  <span className="text-green">+Rs. {(Number(viewingPayslip.overtime_hours * (viewingPayslip.basic_salary / 240) * 1.5 || 0)).toFixed(2)} ({formatHoursToHrsMins(viewingPayslip.overtime_hours)})</span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -1504,7 +1690,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                             <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({o.service_type} - {o.dress_type})</span>
                           </div>
                           <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
-                            {o.work_duration_minutes ? `${(o.work_duration_minutes / 60).toFixed(1)} hrs` : '—'}
+                            {o.work_duration_minutes ? formatMinutesToHrsMins(o.work_duration_minutes) : '—'}
                           </div>
                         </div>
                       ));

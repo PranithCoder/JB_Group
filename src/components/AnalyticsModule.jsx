@@ -403,11 +403,21 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                   const isCutting = currentActive.cutting_staff_id === tailor.id && currentActive.cutting_status === 'pending';
                   taskDetails = `${isCutting ? 'Cutting' : 'Stitching'} portion of ${currentActive.service_type} Order ${currentActive.order_no} (${currentActive.dress_type})`;
                   
-                  // Calculate elapsed time
                   if (currentActive.work_started_time) {
                     const elapsed = Math.round((new Date() - new Date(currentActive.work_started_time)) / (1000 * 60));
-                    const elapsedHrs = (elapsed / 60).toFixed(1);
-                    taskDetails += ` (Elapsed: ${elapsed > 0 ? `${elapsedHrs} hrs` : 'Just started'})`;
+                    const elapsedHrs = Math.floor(elapsed / 60);
+                    const elapsedMins = Math.round(elapsed % 60);
+                    let elapsedStr = 'Just started';
+                    if (elapsed > 0) {
+                      if (elapsedHrs === 0) {
+                        elapsedStr = `${elapsedMins} minutes`;
+                      } else if (elapsedMins === 0) {
+                        elapsedStr = `${elapsedHrs} hrs`;
+                      } else {
+                        elapsedStr = `${elapsedHrs} hrs ${elapsedMins} minutes`;
+                      }
+                    }
+                    taskDetails += ` (Elapsed: ${elapsedStr})`;
                   }
                 } else {
                   statusText = 'Idle (Waiting)';

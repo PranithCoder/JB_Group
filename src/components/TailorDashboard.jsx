@@ -48,6 +48,17 @@ function calculateHoursBetween(timeStr1, timeStr2, dateStr) {
   }
 }
 
+function formatHoursToHrsMins(hoursDecimal) {
+  if (hoursDecimal === undefined || hoursDecimal === null || isNaN(hoursDecimal)) return '—';
+  const hrs = Math.floor(hoursDecimal);
+  const mins = Math.round((hoursDecimal - hrs) * 60);
+  if (hrs === 0 && mins === 0) return '0 minutes';
+  if (hrs === 0) return `${mins} minutes`;
+  if (mins === 0) return `${hrs} hrs`;
+  return `${hrs} hrs ${mins} minutes`;
+}
+
+
 export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
   const [staff, setStaff] = useState(db.getStaff());
   const [orders, setOrders] = useState(db.getOrders());
@@ -242,7 +253,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
 
     db.addAuditLog(
       `Clocked Out Tailor ${activeTailor.name}`,
-      `Finished shift portion. Total accumulated work hours: ${rounded_hours} hrs.`
+      `Finished shift portion. Total accumulated work hours: ${formatHoursToHrsMins(rounded_hours)}.`
     );
 
     refreshData();
@@ -522,7 +533,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed var(--border-light)', paddingTop: '0.375rem', marginTop: '0.375rem' }}>
                 <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Total Work Hours:</span>
-                <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{todayRecord.hours_worked} hrs</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{formatHoursToHrsMins(todayRecord.hours_worked)}</span>
               </div>
             </div>
           </div>
