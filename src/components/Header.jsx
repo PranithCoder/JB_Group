@@ -137,11 +137,11 @@ export default function Header({ activeRole, onRoleChange, currentSection, onMen
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {activeRole === 'officer' ? 'Alina Officer' : 
-               activeRole === 'manager' ? 'Marcus Manager' :
+              {activeRole === 'officer' ? 'Abi' : 
+               activeRole === 'manager' ? 'Thuvaragan' :
                activeRole === 'boss' ? 'Boss Jeyatheepan' :
                activeRole === 'tailor' ? (db.getStaff().find(s => s.id === localStorage.getItem('jb_active_tailor_id'))?.name || 'Select Profile') :
-               'Sam Super'}
+               'Pranith'}
             </span>
             <span style={{ 
               fontSize: '0.7rem', 

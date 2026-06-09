@@ -349,10 +349,10 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   const viewAuditLog = (order) => {
     // Generate simulated edit logs based on order id for the auditing audit component
     const edits = [
-      { user: 'Alina Officer', action: 'Created Order', date: order.order_date, detail: 'Initial entry' }
+      { user: 'Abi', action: 'Created Order', date: order.order_date, detail: 'Initial entry' }
     ];
     if (order.status === 'completed') {
-      edits.push({ user: 'Marcus Manager', action: 'Marked Completed', date: order.delivery_date, detail: 'Quality inspection passed' });
+      edits.push({ user: 'Thuvaragan', action: 'Marked Completed', date: order.delivery_date, detail: 'Quality inspection passed' });
     }
     setViewingAudit({ order, edits });
   };

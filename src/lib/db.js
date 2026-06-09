@@ -31,10 +31,10 @@ export const DRESS_TYPES = [
 ];
 
 const DEFAULT_USERS = [
-  { id: 'usr-1', name: 'Alina Officer', email: 'officer@jbgroup.com', role: 'officer', status: 'Active' },
-  { id: 'usr-2', name: 'Marcus Manager', email: 'manager@jbgroup.com', role: 'manager', status: 'Active' },
+  { id: 'usr-1', name: 'Abi', email: 'abi@jbgroup.com', role: 'officer', status: 'Active' },
+  { id: 'usr-2', name: 'Thuvaragan', email: 'thuvaragan@jbgroup.com', role: 'manager', status: 'Active' },
   { id: 'usr-3', name: 'Boss Jeyatheepan', email: 'josephtheepan@jbgroup.com', role: 'boss', status: 'Active' },
-  { id: 'usr-4', name: 'Sam Super', email: 'super@jbgroup.com', role: 'super_admin', status: 'Active' }
+  { id: 'usr-4', name: 'Pranith', email: 'pranith@jbgroup.com', role: 'super_admin', status: 'Active' }
 ];
 
 const DEFAULT_CUSTOMERS = [];
@@ -262,10 +262,18 @@ export const db = {
     const list = safeGetLocalStorage('jb_users', DEFAULT_USERS);
     let updated = false;
     DEFAULT_USERS.forEach(defUser => {
-      if (!list.some(u => u.id === defUser.id)) {
+      const idx = list.findIndex(u => u.id === defUser.id);
+      if (idx === -1) {
         list.push(defUser);
         syncToFirestore('users', defUser);
         updated = true;
+      } else {
+        const existing = list[idx];
+        if (existing.name !== defUser.name || existing.email !== defUser.email) {
+          list[idx] = { ...existing, name: defUser.name, email: defUser.email };
+          syncToFirestore('users', list[idx]);
+          updated = true;
+        }
       }
     });
     if (updated) {

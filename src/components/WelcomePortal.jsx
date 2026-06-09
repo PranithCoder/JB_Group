@@ -43,13 +43,13 @@ export default function WelcomePortal({ onLoginAdmin, onLoginTailor }) {
     let matchedUser = users.find(u => u.email && u.email.toLowerCase() === emailClean);
 
     if (!matchedUser) {
-      if (emailClean === 'officer@jbgroup.com') {
+      if (emailClean === 'officer@jbgroup.com' || emailClean === 'abi@jbgroup.com') {
         matchedUser = users.find(u => u.role === 'officer');
-      } else if (emailClean === 'admin@jbgroup.com' || emailClean === 'manager@jbgroup.com') {
+      } else if (emailClean === 'admin@jbgroup.com' || emailClean === 'manager@jbgroup.com' || emailClean === 'thuvaragan@jbgroup.com') {
         matchedUser = users.find(u => u.role === 'manager');
       } else if (emailClean === 'josephtheepan@jbgroup.com' || emailClean === 'boss@jbgroup.com') {
         matchedUser = users.find(u => u.role === 'boss');
-      } else if (emailClean === 'superadmin@jbgroup.com' || emailClean === 'super@jbgroup.com') {
+      } else if (emailClean === 'superadmin@jbgroup.com' || emailClean === 'super@jbgroup.com' || emailClean === 'pranith@jbgroup.com') {
         matchedUser = users.find(u => u.role === 'super_admin');
       }
     }
