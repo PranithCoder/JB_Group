@@ -12,6 +12,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
   const [viewingPayslip, setViewingPayslip] = useState(null);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [viewingEmployeeDetails, setViewingEmployeeDetails] = useState(null);
+  const [viewingHistoryTailor, setViewingHistoryTailor] = useState(null);
 
   // Helper to calculate age dynamically based on reference date 2026-06-03
   const calculateAge = (dobString) => {
@@ -974,16 +975,13 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
                           {(!tailor.stitched_orders || tailor.stitched_orders.length === 0) ? (
                             <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No history</span>
                           ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: '100px', overflowY: 'auto', minWidth: '160px' }}>
-                              {tailor.stitched_orders.map(o => (
-                                <div key={o.id} style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.125rem' }}>
-                                  <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{o.dress_type}</span>
-                                  <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
-                                    {o.work_duration_minutes ? formatMinutesToHrsMins(o.work_duration_minutes) : '—'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.35rem 0.6rem', fontSize: '0.75rem' }}
+                              onClick={() => setViewingHistoryTailor(tailor)}
+                            >
+                              📊 View History ({tailor.stitched_orders.length})
+                            </button>
                           )}
                         </td>
                         <td style={{ fontWeight: 700, color: 'var(--color-success)' }}>
@@ -1712,6 +1710,112 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
           </div>
         </div>
       )}
+
+      {/* Dress & Duration Performance History Modal */}
+      {viewingHistoryTailor && (() => {
+        const summary = {};
+        viewingHistoryTailor.stitched_orders.forEach(o => {
+          const type = o.dress_type || 'unknown';
+          if (!summary[type]) {
+            summary[type] = { count: 0, totalMinutes: 0, timedCount: 0 };
+          }
+          summary[type].count += 1;
+          if (o.work_duration_minutes) {
+            summary[type].totalMinutes += o.work_duration_minutes;
+            summary[type].timedCount += 1;
+          }
+        });
+
+        const summaryRows = Object.keys(summary).map(type => {
+          const data = summary[type];
+          const avgMinutes = data.timedCount > 0 ? (data.totalMinutes / data.timedCount) : 0;
+          return {
+            type,
+            count: data.count,
+            avgTime: avgMinutes > 0 ? formatMinutesToHrsMins(avgMinutes) : '—'
+          };
+        });
+
+        return (
+          <div className="modal-overlay">
+            <div className="modal-content" style={{ maxWidth: '650px' }}>
+              <div className="modal-header">
+                <h3>Dress & Duration Performance History</h3>
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setViewingHistoryTailor(null)}>
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ backgroundColor: 'var(--color-primary-light)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--text-primary)' }}>{viewingHistoryTailor.name}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    ID: {viewingHistoryTailor.id} • {viewingHistoryTailor.role}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    📊 Quantity & Average Duration per Dress Type
+                  </h4>
+                  <div className="table-container" style={{ border: '1px solid var(--border-light)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <table className="data-table" style={{ fontSize: '0.825rem', margin: 0 }}>
+                      <thead>
+                        <tr>
+                          <th>Dress Type</th>
+                          <th style={{ textAlign: 'center' }}>Total Completed</th>
+                          <th style={{ textAlign: 'center' }}>Avg Completion Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {summaryRows.map(row => (
+                          <tr key={row.type}>
+                            <td style={{ fontWeight: 600, textTransform: 'capitalize' }}>{row.type}</td>
+                            <td style={{ textAlign: 'center' }}>{row.count}</td>
+                            <td style={{ textAlign: 'center', color: 'var(--color-primary)', fontWeight: 600 }}>{row.avgTime}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    📋 Detailed Job History
+                  </h4>
+                  <div className="table-container" style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
+                    <table className="data-table" style={{ fontSize: '0.8rem', margin: 0 }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'var(--bg-card)' }}>
+                        <tr>
+                          <th>Order No</th>
+                          <th>Dress Type</th>
+                          <th>Completed Date</th>
+                          <th>Time Spent</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {viewingHistoryTailor.stitched_orders.map(o => (
+                          <tr key={o.id}>
+                            <td style={{ fontWeight: 600 }}>{o.order_no}</td>
+                            <td style={{ textTransform: 'capitalize' }}>{o.dress_type}</td>
+                            <td>{o.completed_date || o.delivery_date || '—'}</td>
+                            <td style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                              {o.work_duration_minutes ? formatMinutesToHrsMins(o.work_duration_minutes) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setViewingHistoryTailor(null)}>Close</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
