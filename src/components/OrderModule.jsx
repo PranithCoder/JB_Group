@@ -19,6 +19,76 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   const [completedFromDate, setCompletedFromDate] = useState(TODAY_DATE);
   const [completedToDate, setCompletedToDate] = useState(TODAY_DATE);
   const [viewingPhotos, setViewingPhotos] = useState(null);
+  const [showFitonModal, setShowFitonModal] = useState(false);
+  const [fitonOrder, setFitonOrder] = useState(null);
+  const [fitonDescription, setFitonDescription] = useState('');
+  const [fitonTailorId, setFitonTailorId] = useState('');
+
+  const openFitonModal = (order) => {
+    setFitonOrder(order);
+    setFitonDescription('');
+    setFitonTailorId(order.assigned_staff_id || '');
+    setShowFitonModal(true);
+  };
+
+  const handleFitonIssueSubmit = (e) => {
+    e.preventDefault();
+    if (!fitonDescription.trim()) {
+      alert('Please enter a description of the fitting issue.');
+      return;
+    }
+    if (!fitonTailorId) {
+      alert('Please assign a tailor to handle the alterations.');
+      return;
+    }
+
+    try {
+      const selectedTailor = db.getStaff().find(s => s.id === fitonTailorId);
+      const tailorName = selectedTailor ? selectedTailor.name : 'Unknown Tailor';
+
+      const updatedOrder = {
+        ...fitonOrder,
+        status: 'pending',
+        is_urgent: true,
+        assigned_staff_id: fitonTailorId,
+        cutting_staff_id: fitonTailorId,
+        completed_date: '',
+        note: `${fitonOrder.note ? fitonOrder.note + '\n' : ''}[Fit-on Issue - High Priority]: ${fitonDescription}`
+      };
+
+      const result = db.saveOrder(updatedOrder);
+
+      if (result.status === 'success') {
+        db.saveComplaint({
+          customer_id: fitonOrder.customer_id,
+          order_id: fitonOrder.id,
+          description: `Fit-on issue: ${fitonDescription}`,
+          assigned_staff_id: fitonTailorId,
+          evidence_url: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=300&auto=format&fit=crop',
+          status: 'In Review',
+          resolution_notes: ''
+        });
+
+        db.addAuditLog(
+          `Reverted Order ${fitonOrder.order_no} (Fit-on Issue)`,
+          `Reverted to Pending with High Priority. Assigned tailor: ${tailorName}. Complaint registered automatically.`
+        );
+
+        setNotification({
+          type: 'success',
+          message: `Order ${fitonOrder.order_no} reverted to pending (high priority). Tailor ${tailorName} assigned and complaint registered.`
+        });
+        setTimeout(() => setNotification(null), 5000);
+        
+        setShowFitonModal(false);
+        refreshList();
+        triggerUpdate();
+      }
+    } catch (err) {
+      console.error("Error in handleFitonIssueSubmit:", err);
+      alert("Error processing fit-on issue: " + err.message);
+    }
+  };
 
   const [formData, setFormData] = useState({
     customer_id: '',
@@ -744,6 +814,21 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                               <Trash2 size={14} />
                             </button>
                           )}
+                          {!isReadOnly && (ord.status === 'completed' || ord.status === 'delivered') && (
+                            <button 
+                              className="btn btn-secondary btn-sm text-red" 
+                              style={{ 
+                                padding: '0.25rem 0.5rem', 
+                                borderColor: 'var(--color-danger)', 
+                                color: 'var(--color-danger)',
+                                backgroundColor: 'var(--color-danger-light)' 
+                              }} 
+                              onClick={() => openFitonModal(ord)} 
+                              title="Report Fit-on Issue"
+                            >
+                              ⚠️ Fit-on Issue
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1390,6 +1475,60 @@ Thank you for choosing JB Groups Tailoring Shop!`;
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setViewingPhotos(null)}>Close View</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fit-on Issue / Revision Modal */}
+      {showFitonModal && fitonOrder && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Report Fit-on Issue: {fitonOrder.order_no}</h3>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowFitonModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleFitonIssueSubmit}>
+              <div className="modal-body">
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+                  This will revert the order to <strong>Pending</strong> status and set it to <strong>High Priority (Urgent ⚡)</strong>. A customer complaint will be filed automatically, and cutting & stitching commissions will be reassigned to the new tailor.
+                </p>
+                <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
+                  <div className="form-group">
+                    <label className="form-label">Assign Tailor for Alteration & Commissions *</label>
+                    <select 
+                      className="form-select"
+                      required
+                      value={fitonTailorId}
+                      onChange={e => setFitonTailorId(e.target.value)}
+                    >
+                      <option value="">-- Choose Tailor --</option>
+                      {db.getStaff().map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Fitting / Stitching Issue Description *</label>
+                    <textarea 
+                      className="form-textarea"
+                      required
+                      rows={4}
+                      value={fitonDescription}
+                      onChange={e => setFitonDescription(e.target.value)}
+                      placeholder="Describe the issues found during fitting (e.g. sleeves too tight, hem needs raising by 2 inches)..."
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowFitonModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-danger" style={{ backgroundColor: 'var(--color-danger)' }}>Revert Order & Assign</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

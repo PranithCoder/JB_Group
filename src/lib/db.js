@@ -511,10 +511,10 @@ export const db = {
           throw new Error('Invalid transition! Pending orders can only move to In-Progress or Cancelled.');
         } else if (cur === 'in-progress' && nxt !== 'completed' && nxt !== 'pending') {
           throw new Error('Invalid transition! In-Progress orders can only move to Completed, Pending, or Cancelled.');
-        } else if (cur === 'completed' && nxt !== 'delivered') {
-          throw new Error('Invalid transition! Completed orders can only move to Delivered or Cancelled.');
-        } else if (cur === 'delivered') {
-          throw new Error('Invalid transition! Delivered is the final stage.');
+        } else if (cur === 'completed' && nxt !== 'delivered' && nxt !== 'pending') {
+          throw new Error('Invalid transition! Completed orders can only move to Delivered, Pending, or Cancelled.');
+        } else if (cur === 'delivered' && nxt !== 'pending') {
+          throw new Error('Invalid transition! Delivered is the final stage except when reverted to Pending for revisions.');
         } else if (cur === 'cancelled') {
           throw new Error('Invalid transition! Cancelled orders cannot be reopened.');
         }
