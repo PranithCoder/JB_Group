@@ -4,6 +4,7 @@ import { Search, Plus, Edit2, Trash2, X, AlertTriangle, Eye, RefreshCw, Calendar
 
 export default function OrderModule({ activeRole, triggerUpdate }) {
   const [orders, setOrders] = useState(db.getOrders());
+  const completedUndeliveredCount = orders.filter(o => o.status === 'completed').length;
   const [customers] = useState(db.getCustomers());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -148,8 +149,16 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
     if (statusFilter === 'overdue') return isOverdue(o);
     if (statusFilter === 'soon') return isDueSoon(o);
     if (statusFilter === 'completed') {
-      const compDate = o.completed_date || o.delivery_date;
-      return (o.status === 'completed' || o.status === 'delivered') && compDate >= completedFromDate && compDate <= completedToDate;
+      if (o.status === 'completed') {
+        // Always show completed but undelivered orders (so they don't get missed)
+        return true;
+      }
+      if (o.status === 'delivered') {
+        // Only filter delivered orders by date
+        const compDate = o.completed_date || o.delivery_date;
+        return compDate >= completedFromDate && compDate <= completedToDate;
+      }
+      return false;
     }
     if (statusFilter === 'delivered') {
       const compDate = o.completed_date || o.delivery_date;
@@ -492,9 +501,22 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
               <button 
                 onClick={() => setStatusFilter('completed')}
                 className={`role-btn ${statusFilter === 'completed' ? 'active' : ''}`}
-                style={{ padding: '0.25rem 0.625rem', fontSize: '0.775rem' }}
+                style={{ padding: '0.25rem 0.625rem', fontSize: '0.775rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
               >
-                Completed
+                <span>Completed</span>
+                {completedUndeliveredCount > 0 && (
+                  <span style={{ 
+                    backgroundColor: 'var(--color-danger)', 
+                    color: '#fff', 
+                    fontSize: '0.675rem', 
+                    padding: '0.05rem 0.35rem', 
+                    borderRadius: '999px',
+                    fontWeight: 'bold',
+                    lineHeight: 1
+                  }}>
+                    {completedUndeliveredCount}
+                  </span>
+                )}
               </button>
               <button 
                 onClick={() => setStatusFilter('delivered')}
@@ -527,7 +549,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
             </div>
 
             {(statusFilter === 'completed' || statusFilter === 'delivered' || statusFilter === 'cancelled') && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.825rem', padding: '0.25rem 0.5rem', backgroundColor: '#fafafa', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.825rem', padding: '0.25rem 0.5rem', backgroundColor: '#fafafa', border: '1px solid var(--border-light)', borderRadius: '8px', flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>From:</span>
                 <input 
                   type="date" 
@@ -547,6 +569,11 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                 <span style={{ borderLeft: '1px solid var(--border-light)', paddingLeft: '0.5rem', fontWeight: 600, color: 'var(--color-primary)' }}>
                   Filtered Count: {filteredOrders.length}
                 </span>
+                {statusFilter === 'completed' && completedUndeliveredCount > 0 && (
+                  <span style={{ marginLeft: '0.5rem', paddingLeft: '0.5rem', borderLeft: '1px solid var(--border-light)', color: '#b45309', fontWeight: 600 }}>
+                    🎁 {completedUndeliveredCount} Completed Awaiting Pickup (Always Shown)
+                  </span>
+                )}
               </div>
             )}
 
@@ -588,7 +615,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                   let styleClass = '';
                   
                   if (ord.status === 'completed') {
-                    dueLabel = `Completed: ${ord.completed_date || ord.delivery_date}`;
+                    dueLabel = `Completed: ${ord.completed_date || ord.delivery_date} (Awaiting Pickup 🎁)`;
                     styleClass = 'text-green';
                   } else if (ord.status === 'delivered') {
                     dueLabel = `Delivered: ${ord.completed_date || ord.delivery_date}`;
@@ -813,6 +840,29 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                             <button className="btn btn-secondary btn-sm text-red" style={{ padding: '0.25rem 0.5rem' }} onClick={() => handleDelete(ord.id)} title="Delete Order">
                               <Trash2 size={14} />
                             </button>
+                          )}
+                          {!isReadOnly && ord.status === 'completed' && (
+                            <a 
+                              href={`https://wa.me/${(ord.customer?.contact || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                `Dear ${ord.customer?.name || 'Customer'},\n\nYour tailoring order *${ord.order_no}* is now completed and ready for pickup!\n\nDetails:\n- Service: ${ord.service_type} (${ord.dress_type})\n- Total Amount: Rs. ${Number(ord.amount || 0).toFixed(2)}\n- Payment Status: ${ord.payment_status === 'paid' ? 'Paid' : ord.payment_status === 'partially_paid' ? `Partially Paid (Paid: Rs. ${Number(ord.amount_paid || 0).toFixed(2)}, Balance: Rs. ${Number(ord.amount - (ord.amount_paid || 0)).toFixed(2)})` : 'Unpaid'}\n\nPlease visit JB Groups Tailoring Shop to collect your item.\n\nThank you!`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-secondary btn-sm"
+                              style={{ 
+                                padding: '0.25rem 0.5rem',
+                                borderColor: '#25D366',
+                                color: '#25D366',
+                                backgroundColor: '#f0fdf4',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                textDecoration: 'none'
+                              }}
+                              title="Notify Customer via WhatsApp"
+                            >
+                              💬 Notify
+                            </a>
                           )}
                           {!isReadOnly && (ord.status === 'completed' || ord.status === 'delivered') && (
                             <button 

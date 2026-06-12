@@ -154,15 +154,9 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
         return o.cutting_staff_id === activeTailorId;
       }
       
-      // If no cutting tailor is assigned, but a stitching tailor is assigned, only they should see it
-      if (o.assigned_staff_id && o.assigned_staff_id !== activeTailorId) {
-        return false;
-      }
-
-      // Stitching and Repairs orders needing cutting require matching cutting capability
-      if (o.service_type !== 'Alteration') {
-        const canCut = activeTailor?.cutting_skills?.includes(o.dress_type);
-        if (!canCut) return false;
+      // If stitching is assigned, only that tailor should see it
+      if (o.assigned_staff_id) {
+        return o.assigned_staff_id === activeTailorId;
       }
     } else {
       // Order needs stitching
@@ -170,7 +164,7 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
         return o.assigned_staff_id === activeTailorId;
       }
     }
-
+ 
     return true;
   });
 
