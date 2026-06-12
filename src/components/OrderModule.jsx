@@ -2,6 +2,18 @@ import React, { useState } from 'react';
 import { db, DRESS_TYPES, TODAY_DATE } from '../lib/db';
 import { Search, Plus, Edit2, Trash2, X, AlertTriangle, Eye, RefreshCw, Calendar, ShoppingBag } from 'lucide-react';
 
+const formatWhatsAppPhone = (phoneStr) => {
+  if (!phoneStr) return '';
+  let clean = phoneStr.replace(/[^0-9]/g, '');
+  if (clean.startsWith('0')) {
+    return '94' + clean.slice(1);
+  }
+  if (clean.length === 9) {
+    return '94' + clean;
+  }
+  return clean;
+};
+
 export default function OrderModule({ activeRole, triggerUpdate }) {
   const [orders, setOrders] = useState(db.getOrders());
   const completedUndeliveredCount = orders.filter(o => o.status === 'completed').length;
@@ -843,7 +855,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                           )}
                           {!isReadOnly && ord.status === 'completed' && (
                             <a 
-                              href={`https://wa.me/${(ord.customer?.contact || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                              href={`https://wa.me/${formatWhatsAppPhone(ord.customer?.contact)}?text=${encodeURIComponent(
                                 `Dear ${ord.customer?.name || 'Customer'},\n\nYour tailoring order *${ord.order_no}* is now completed and ready for pickup!\n\nDetails:\n- Service: ${ord.service_type} (${ord.dress_type})\n- Total Amount: Rs. ${Number(ord.amount || 0).toFixed(2)}\n- Payment Status: ${ord.payment_status === 'paid' ? 'Paid' : ord.payment_status === 'partially_paid' ? `Partially Paid (Paid: Rs. ${Number(ord.amount_paid || 0).toFixed(2)}, Balance: Rs. ${Number(ord.amount - (ord.amount_paid || 0)).toFixed(2)})` : 'Unpaid'}\n\nPlease visit JB Groups Tailoring Shop to collect your item.\n\nThank you!`
                               )}`}
                               target="_blank"
@@ -1280,7 +1292,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       {/* Share / Receipt Options Modal */}
       {showShareModal && newlyBookedOrder && (() => {
         const customer = customers.find(c => c.id === newlyBookedOrder.customer_id) || { name: 'Valued Customer', contact: '' };
-        const cleanPhone = (customer.contact || '').replace(/[^0-9]/g, '');
+        const cleanPhone = formatWhatsAppPhone(customer.contact);
         const paymentLabel = newlyBookedOrder.payment_status === 'paid' 
           ? 'Paid' 
           : newlyBookedOrder.payment_status === 'partially_paid'
