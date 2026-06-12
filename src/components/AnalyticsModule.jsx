@@ -317,7 +317,9 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
 
   const filteredCompletedOrders = orders.filter(o => {
     if (o.status !== 'completed' && o.status !== 'delivered') return false;
-    const compDate = o.completed_date || o.delivery_date;
+    const compDate = o.status === 'delivered' 
+      ? (o.delivered_date || o.completed_date || o.delivery_date)
+      : (o.completed_date || o.delivery_date);
     if (completedFilterMode === 'today') {
       return compDate === TODAY_DATE;
     } else {
@@ -666,7 +668,7 @@ export default function AnalyticsModule({ activeRole, setCurrentSection }) {
                         )}
                       </td>
                       <td style={{ fontWeight: 500 }}>{o.customer?.name || '—'}</td>
-                      <td>{o.delivery_date}</td>
+                      <td>{o.status === 'delivered' ? (o.delivered_date || o.completed_date || o.delivery_date) : (o.completed_date || o.delivery_date)}</td>
                       <td>
                         <div style={{ fontWeight: 500 }}>{o.service_type}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{o.dress_type}</div>

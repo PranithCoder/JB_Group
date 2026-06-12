@@ -460,11 +460,16 @@ export const db = {
       if ((ord.status === 'completed' || ord.status === 'delivered') && !completedDate) {
         completedDate = ord.delivery_date || ord.order_date;
       }
+      let deliveredDate = ord.delivered_date;
+      if (ord.status === 'delivered' && !deliveredDate) {
+        deliveredDate = completedDate;
+      }
       return {
         ...ord,
         dress_type: fallbackDressType,
         amount_paid: amountPaid,
         completed_date: completedDate,
+        delivered_date: deliveredDate,
         customer: customers.find(c => c.id === ord.customer_id) || { name: 'Unknown Customer' },
         assignedStaff: staff.find(s => s.id === ord.assigned_staff_id) || null,
         cuttingStaff: staff.find(s => s.id === ord.cutting_staff_id) || null,
@@ -554,6 +559,10 @@ export const db = {
             (original.status !== 'completed' && original.status !== 'delivered')) {
           updatedOrder.completed_date = getDateOffset(0);
         }
+        if (order.status === 'delivered' && original.status !== 'delivered') {
+          updatedOrder.delivered_date = getDateOffset(0);
+          updatedOrder.completed_date = getDateOffset(0);
+        }
         list[index] = { ...list[index], ...updatedOrder };
         syncToFirestore('orders', list[index]);
         // If order gets completed, automatically decrement some stock for demo
@@ -570,6 +579,10 @@ export const db = {
       }
       order.order_date = getDateOffset(0);
       if (order.status === 'completed' || order.status === 'delivered') {
+        order.completed_date = getDateOffset(0);
+      }
+      if (order.status === 'delivered') {
+        order.delivered_date = getDateOffset(0);
         order.completed_date = getDateOffset(0);
       }
       list.unshift(order);

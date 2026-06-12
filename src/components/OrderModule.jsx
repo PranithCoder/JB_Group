@@ -154,15 +154,15 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         return true;
       }
       if (o.status === 'delivered') {
-        // Only filter delivered orders by date
-        const compDate = o.completed_date || o.delivery_date;
-        return compDate >= completedFromDate && compDate <= completedToDate;
+        // Only filter delivered orders by actual delivery date
+        const delDate = o.delivered_date || o.completed_date || o.delivery_date;
+        return delDate >= completedFromDate && delDate <= completedToDate;
       }
       return false;
     }
     if (statusFilter === 'delivered') {
-      const compDate = o.completed_date || o.delivery_date;
-      return o.status === 'delivered' && compDate >= completedFromDate && compDate <= completedToDate;
+      const delDate = o.delivered_date || o.completed_date || o.delivery_date;
+      return o.status === 'delivered' && delDate >= completedFromDate && delDate <= completedToDate;
     }
     if (statusFilter === 'cancelled') {
       const cancelDate = o.cancelled_at ? o.cancelled_at.split('T')[0] : o.delivery_date;
@@ -618,7 +618,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                     dueLabel = `Completed: ${ord.completed_date || ord.delivery_date} (Awaiting Pickup 🎁)`;
                     styleClass = 'text-green';
                   } else if (ord.status === 'delivered') {
-                    dueLabel = `Delivered: ${ord.completed_date || ord.delivery_date}`;
+                    dueLabel = `Delivered: ${ord.delivered_date || ord.completed_date || ord.delivery_date}`;
                     styleClass = 'text-green';
                   } else {
                     if (daysLeft < 0) {
