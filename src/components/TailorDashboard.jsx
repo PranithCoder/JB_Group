@@ -320,112 +320,129 @@ export default function TailorDashboard({ triggerUpdate, onExitPortal }) {
     const reader = new FileReader();
     reader.onloadend = () => {
       const img = new Image();
-      img.src = reader.result;
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const MAX_WIDTH = 400;
-        const MAX_HEIGHT = 400;
-        let width = img.width;
-        let height = img.height;
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Add Watermark: Bella Design, Phone, Address
-        ctx.save();
-        const padding = 8;
-        const lineSpacing = 3;
-        const fontFamily = 'system-ui, -apple-system, sans-serif';
-        
-        const brandText = "Bella Design";
-        const phoneText = "+94726278727";
-        const addressText = "71,1/2(1st Floor) Thirugnanasampanthar street ,Trincomalee 31000";
-
-        // Helper to wrap address text if it exceeds the canvas width
-        const wrapText = (context, text, maxWidth) => {
-          const words = text.split(' ');
-          if (words.length === 0) return [];
-          const lines = [];
-          let currentLine = words[0];
-          for (let i = 1; i < words.length; i++) {
-            const word = words[i];
-            const w = context.measureText(currentLine + " " + word).width;
-            if (w < maxWidth) {
-              currentLine += " " + word;
-            } else {
-              lines.push(currentLine);
-              currentLine = word;
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
             }
           }
-          lines.push(currentLine);
-          return lines;
-        };
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
 
-        const brandFont = `bold 12px ${fontFamily}`;
-        const phoneFont = `10px ${fontFamily}`;
-        const addressFont = `9px ${fontFamily}`;
-        
-        const maxWidth = width - (padding * 2);
-        
-        ctx.font = addressFont;
-        const addressLines = wrapText(ctx, addressText, maxWidth);
-        
-        const brandLineHeight = 14;
-        const phoneLineHeight = 12;
-        const addressLineHeight = 11;
-        
-        const totalTextHeight = brandLineHeight + lineSpacing + phoneLineHeight + lineSpacing + (addressLines.length * addressLineHeight);
-        const bannerHeight = totalTextHeight + (padding * 2);
-        
-        // Draw semi-transparent dark banner background at the bottom of the canvas
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(0, height - bannerHeight, width, bannerHeight);
-        
-        // Draw text
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        
-        let currentY = height - bannerHeight + padding;
-        
-        // Brand name
-        ctx.font = brandFont;
-        ctx.fillText(brandText, padding, currentY);
-        currentY += brandLineHeight + lineSpacing;
-        
-        // Phone number
-        ctx.font = phoneFont;
-        ctx.fillText(phoneText, padding, currentY);
-        currentY += phoneLineHeight + lineSpacing;
-        
-        // Address lines
-        ctx.font = addressFont;
-        addressLines.forEach(line => {
-          ctx.fillText(line, padding, currentY);
-          currentY += addressLineHeight;
-        });
-        
-        ctx.restore();
+          // Add Watermark: Bella Design, Phone, Address
+          ctx.save();
+          const padding = 8;
+          const lineSpacing = 3;
+          const fontFamily = 'system-ui, -apple-system, sans-serif';
+          
+          const brandText = "Bella Design";
+          const phoneText = "+94726278727";
+          const addressText = "71,1/2(1st Floor) Thirugnanasampanthar street ,Trincomalee 31000";
 
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        if (side === 'front') {
-          setPhotoFront(compressedBase64);
-        } else {
-          setPhotoBack(compressedBase64);
+          // Helper to wrap address text if it exceeds the canvas width
+          const wrapText = (context, text, maxWidth) => {
+            const words = text.split(' ');
+            if (words.length === 0) return [];
+            const lines = [];
+            let currentLine = words[0];
+            for (let i = 1; i < words.length; i++) {
+              const word = words[i];
+              const w = context.measureText(currentLine + " " + word).width;
+              if (w < maxWidth) {
+                currentLine += " " + word;
+              } else {
+                lines.push(currentLine);
+                currentLine = word;
+              }
+            }
+            lines.push(currentLine);
+            return lines;
+          };
+
+          const brandFont = `bold 12px ${fontFamily}`;
+          const phoneFont = `10px ${fontFamily}`;
+          const addressFont = `9px ${fontFamily}`;
+          
+          const maxWidth = width - (padding * 2);
+          
+          ctx.font = addressFont;
+          const addressLines = wrapText(ctx, addressText, maxWidth);
+          
+          const brandLineHeight = 14;
+          const phoneLineHeight = 12;
+          const addressLineHeight = 11;
+          
+          const totalTextHeight = brandLineHeight + lineSpacing + phoneLineHeight + lineSpacing + (addressLines.length * addressLineHeight);
+          const bannerHeight = totalTextHeight + (padding * 2);
+          
+          // Draw semi-transparent dark banner background at the bottom of the canvas
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.fillRect(0, height - bannerHeight, width, bannerHeight);
+          
+          // Draw text
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          
+          let currentY = height - bannerHeight + padding;
+          
+          // Brand name
+          ctx.font = brandFont;
+          ctx.fillText(brandText, padding, currentY);
+          currentY += brandLineHeight + lineSpacing;
+          
+          // Phone number
+          ctx.font = phoneFont;
+          ctx.fillText(phoneText, padding, currentY);
+          currentY += phoneLineHeight + lineSpacing;
+          
+          // Address lines
+          ctx.font = addressFont;
+          addressLines.forEach(line => {
+            ctx.fillText(line, padding, currentY);
+            currentY += addressLineHeight;
+          });
+          
+          ctx.restore();
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          if (side === 'front') {
+            setPhotoFront(compressedBase64);
+          } else {
+            setPhotoBack(compressedBase64);
+          }
+        } catch (error) {
+          console.error("Watermark generation error:", error);
+          if (side === 'front') {
+            setPhotoFront(reader.result);
+          } else {
+            setPhotoBack(reader.result);
+          }
         }
       };
+      img.onerror = (err) => {
+        console.error("Image load error:", err);
+        if (side === 'front') {
+          setPhotoFront(reader.result);
+        } else {
+          setPhotoBack(reader.result);
+        }
+      };
+      img.src = reader.result;
     };
     reader.readAsDataURL(file);
   };
