@@ -32,10 +32,25 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   const [completedFromDate, setCompletedFromDate] = useState(TODAY_DATE);
   const [completedToDate, setCompletedToDate] = useState(TODAY_DATE);
   const [viewingPhotos, setViewingPhotos] = useState(null);
+  const [notifyingOrder, setNotifyingOrder] = useState(null);
+  const [customNotifyMsg, setCustomNotifyMsg] = useState('');
   const [showFitonModal, setShowFitonModal] = useState(false);
   const [fitonOrder, setFitonOrder] = useState(null);
   const [fitonDescription, setFitonDescription] = useState('');
   const [fitonTailorId, setFitonTailorId] = useState('');
+
+  const openNotifyModal = (order) => {
+    setNotifyingOrder(order);
+    const paymentLabel = order.payment_status === 'paid' 
+      ? 'Paid' 
+      : order.payment_status === 'partially_paid'
+      ? `Partially Paid (Paid: Rs. ${Number(order.amount_paid || 0).toFixed(2)}, Bal: Rs. ${Number(order.amount - (order.amount_paid || 0)).toFixed(2)})`
+      : `Unpaid (Bal: Rs. ${Number(order.amount).toFixed(2)})`;
+
+    const messageText = `Dear ${order.customer?.name || 'Customer'},\n\nYour tailoring order *${order.order_no}* is now completed and ready for pickup!\n\nDetails:\n- Service: ${order.service_type} (${order.dress_type})\n- Total Amount: Rs. ${Number(order.amount || 0).toFixed(2)}\n- Payment Status: ${paymentLabel}\n\nPlease visit JB Groups Tailoring Shop to collect your item.\n\nThank you!`;
+    
+    setCustomNotifyMsg(messageText);
+  };
 
   const openFitonModal = (order) => {
     setFitonOrder(order);
@@ -854,12 +869,9 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                             </button>
                           )}
                           {!isReadOnly && ord.status === 'completed' && (
-                            <a 
-                              href={`https://wa.me/${formatWhatsAppPhone(ord.customer?.contact)}?text=${encodeURIComponent(
-                                `Dear ${ord.customer?.name || 'Customer'},\n\nYour tailoring order *${ord.order_no}* is now completed and ready for pickup!\n\nDetails:\n- Service: ${ord.service_type} (${ord.dress_type})\n- Total Amount: Rs. ${Number(ord.amount || 0).toFixed(2)}\n- Payment Status: ${ord.payment_status === 'paid' ? 'Paid' : ord.payment_status === 'partially_paid' ? `Partially Paid (Paid: Rs. ${Number(ord.amount_paid || 0).toFixed(2)}, Balance: Rs. ${Number(ord.amount - (ord.amount_paid || 0)).toFixed(2)})` : 'Unpaid'}\n\nPlease visit JB Groups Tailoring Shop to collect your item.\n\nThank you!`
-                              )}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button 
+                              type="button"
+                              onClick={() => openNotifyModal(ord)}
                               className="btn btn-secondary btn-sm"
                               style={{ 
                                 padding: '0.25rem 0.5rem',
@@ -868,13 +880,12 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                                 backgroundColor: '#f0fdf4',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '0.25rem',
-                                textDecoration: 'none'
+                                gap: '0.25rem'
                               }}
-                              title="Notify Customer via WhatsApp"
+                              title="Notify Customer via WhatsApp & Share Photos"
                             >
                               💬 Notify
-                            </a>
+                            </button>
                           )}
                           {!isReadOnly && (ord.status === 'completed' || ord.status === 'delivered') && (
                             <button 
@@ -1540,6 +1551,145 @@ Thank you for choosing JB Groups Tailoring Shop!`;
           </div>
         </div>
       )}
+
+      {/* WhatsApp Notification & Photo Share Modal */}
+      {notifyingOrder && (() => {
+        const customer = notifyingOrder.customer || { name: 'Customer', contact: '' };
+        const cleanPhone = formatWhatsAppPhone(customer.contact);
+        
+        const handleSend = () => {
+          // Copy message to clipboard
+          navigator.clipboard.writeText(customNotifyMsg).then(() => {
+            // Automatically download files if they exist
+            if (notifyingOrder.photo_front) {
+              downloadImage(notifyingOrder.photo_front, `${notifyingOrder.order_no}_front.jpg`);
+            }
+            if (notifyingOrder.photo_back) {
+              // Delay slightly to prevent browser blocking multiple simultaneous downloads
+              setTimeout(() => {
+                downloadImage(notifyingOrder.photo_back, `${notifyingOrder.order_no}_back.jpg`);
+              }, 300);
+            }
+            
+            // Open WhatsApp link in new tab
+            const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(customNotifyMsg)}`;
+            window.open(waLink, '_blank');
+            setNotifyingOrder(null);
+          }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            // Fallback: just open link
+            const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(customNotifyMsg)}`;
+            window.open(waLink, '_blank');
+          });
+        };
+
+        const downloadImage = (base64Data, filename) => {
+          if (!base64Data) return;
+          const link = document.createElement('a');
+          link.href = base64Data;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        };
+
+        return (
+          <div className="modal-overlay" style={{ zIndex: 110 }}>
+            <div className="modal-content" style={{ maxWidth: '650px' }}>
+              <div className="modal-header">
+                <h3>Share Completion Photos & Notify: {notifyingOrder.order_no}</h3>
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setNotifyingOrder(null)}>
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.8rem', color: '#166534', lineHeight: 1.4 }}>
+                  <strong>How to share watermarked photos:</strong>
+                  <ol style={{ margin: '0.375rem 0 0 0', paddingLeft: '1.25rem' }}>
+                    <li>Review the watermarked photos below.</li>
+                    <li>Click the <strong>"Copy Message & Open WhatsApp"</strong> button to copy the notification text and download the photos.</li>
+                    <li>Paste the copied message into the WhatsApp chat, drag & drop the downloaded watermarked photos, and send!</li>
+                  </ol>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>Message Text Template</label>
+                  <textarea 
+                    className="form-textarea"
+                    rows={6}
+                    value={customNotifyMsg}
+                    onChange={e => setCustomNotifyMsg(e.target.value)}
+                    style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+                  />
+                </div>
+
+                <div>
+                  <h4 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                    Watermarked Photos to Send
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>FRONT VIEW</div>
+                      {notifyingOrder.photo_front ? (
+                        <div style={{ position: 'relative' }}>
+                          <img 
+                            src={notifyingOrder.photo_front} 
+                            alt="Front View" 
+                            style={{ width: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '6px', border: '1px solid var(--border-light)' }} 
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            style={{ marginTop: '0.5rem', width: '100%', justifyContent: 'center', fontSize: '0.75rem' }}
+                            onClick={() => downloadImage(notifyingOrder.photo_front, `${notifyingOrder.order_no}_front.jpg`)}
+                          >
+                            ⬇️ Download Front
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '2rem 1rem', backgroundColor: '#f1f5f9', borderRadius: '6px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No image</div>
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>BACK VIEW</div>
+                      {notifyingOrder.photo_back ? (
+                        <div style={{ position: 'relative' }}>
+                          <img 
+                            src={notifyingOrder.photo_back} 
+                            alt="Back View" 
+                            style={{ width: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '6px', border: '1px solid var(--border-light)' }} 
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            style={{ marginTop: '0.5rem', width: '100%', justifyContent: 'center', fontSize: '0.75rem' }}
+                            onClick={() => downloadImage(notifyingOrder.photo_back, `${notifyingOrder.order_no}_back.jpg`)}
+                          >
+                            ⬇️ Download Back
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '2rem 1rem', backgroundColor: '#f1f5f9', borderRadius: '6px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No image</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setNotifyingOrder(null)}>Cancel</button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={handleSend}
+                  style={{ backgroundColor: '#25D366', borderColor: '#25D366' }}
+                >
+                  💬 Copy Message & Open WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Fit-on Issue / Revision Modal */}
       {showFitonModal && fitonOrder && (
