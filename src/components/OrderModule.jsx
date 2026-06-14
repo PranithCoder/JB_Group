@@ -1310,14 +1310,26 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
           ? `Partially Paid (Paid: Rs. ${Number(newlyBookedOrder.amount_paid || 0).toFixed(2)}, Bal: Rs. ${Number(newlyBookedOrder.amount - (newlyBookedOrder.amount_paid || 0)).toFixed(2)})`
           : `Unpaid (Bal: Rs. ${Number(newlyBookedOrder.amount).toFixed(2)})`;
 
-        const messageText = `Dear ${customer.name}, your tailor booking is confirmed!
-Order No: ${newlyBookedOrder.order_no}${newlyBookedOrder.bill_no ? `\nBill No: ${newlyBookedOrder.bill_no}` : ''}
-Service: ${newlyBookedOrder.service_type} (${newlyBookedOrder.dress_type || 'modern dress (Custom)'})
-Price: Rs. ${Number(newlyBookedOrder.amount).toFixed(2)} [${paymentLabel}]
-Delivery Due: ${newlyBookedOrder.delivery_date}
-Notes: ${newlyBookedOrder.note || '—'}
-Thank you for choosing JB Groups Tailoring Shop!`;
+        const greeting = (() => {
+          const hours = new Date().getHours();
+          if (hours >= 5 && hours < 12) return 'Good morning';
+          if (hours >= 12 && hours < 17) return 'Good afternoon';
+          return 'Good evening';
+        })();
 
+        const messageText = `✨ *JB GROUPS* ✨\n` +
+          `-----------------------------------\n` +
+          `👋 ${greeting} *${customer.name}*,\n\n` +
+          `🎉 Your tailor booking is *confirmed*!\n\n` +
+          `📌 *Booking Details*:\n` +
+          `🎫 *Order No:* ${newlyBookedOrder.order_no}\n` +
+          (newlyBookedOrder.bill_no ? `🧾 *Bill No:* ${newlyBookedOrder.bill_no}\n` : '') +
+          `🧵 *Service:* ${newlyBookedOrder.service_type} (${newlyBookedOrder.dress_type || 'Custom'})\n` +
+          `💰 *Total Price:* Rs. ${Number(newlyBookedOrder.amount).toFixed(2)}\n` +
+          `💳 *Payment:* ${paymentLabel}\n` +
+          `📅 *Estimated Delivery:* ${newlyBookedOrder.delivery_date}\n\n` +
+          `-----------------------------------\n` +
+          `🙏 Thank you for choosing *JB Groups Tailoring Shop*!`;
 
         const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
 
