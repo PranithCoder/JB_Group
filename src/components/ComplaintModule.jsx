@@ -40,7 +40,7 @@ export default function ComplaintModule({ activeRole, triggerUpdate }) {
       order_id: formFields.order_id || null,
       description: formFields.description,
       assigned_staff_id: formFields.assigned_staff_id || null,
-      evidence_url: formFields.evidence_url || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=300&auto=format&fit=crop',
+      evidence_url: '',
       status: 'In Review',
       resolution_notes: ''
     });
@@ -117,7 +117,6 @@ export default function ComplaintModule({ activeRole, triggerUpdate }) {
                 <th>Link Order</th>
                 <th>Date Reported</th>
                 <th>Description</th>
-                <th>Assigned Expert</th>
                 <th>Resolution notes</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -126,7 +125,7 @@ export default function ComplaintModule({ activeRole, triggerUpdate }) {
             <tbody>
               {complaints.length === 0 ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                     No complaints registered. High customer satisfaction!
                   </td>
                 </tr>
@@ -139,9 +138,6 @@ export default function ComplaintModule({ activeRole, triggerUpdate }) {
                     <td>{comp.date_reported}</td>
                     <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={comp.description}>
                       {comp.description}
-                    </td>
-                    <td>
-                      <span className="badge info">{comp.assignedStaff?.name || 'Unassigned'}</span>
                     </td>
                     <td style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={comp.resolution_notes}>
                       {comp.resolution_notes || '—'}
@@ -208,29 +204,7 @@ export default function ComplaintModule({ activeRole, triggerUpdate }) {
                       ))}
                     </select>
                   </div>
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label">Responsible Tailor/Staff Assignment *</label>
-                    <select 
-                      className="form-select"
-                      required
-                      value={formFields.assigned_staff_id}
-                      onChange={e => setFormFields({ ...formFields, assigned_staff_id: e.target.value })}
-                    >
-                      {staff.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label">Complaint Evidence Image URL</label>
-                    <input 
-                      type="text"
-                      className="form-input"
-                      placeholder="Paste fabric image URL or leave empty"
-                      value={formFields.evidence_url}
-                      onChange={e => setFormFields({ ...formFields, evidence_url: e.target.value })}
-                    />
-                  </div>
+                  {/* Responsible Tailor and Evidence section removed per client request */}
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <label className="form-label">Detailed Description of Fit/Stitching Issue *</label>
                     <textarea 
@@ -269,16 +243,7 @@ export default function ComplaintModule({ activeRole, triggerUpdate }) {
                   <p style={{ fontSize: '0.875rem', backgroundColor: '#f1f5f9', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-light)', marginTop: '0.375rem', lineHeight: '1.4' }}>
                     {editingComplaint.description}
                   </p>
-                  {editingComplaint.evidence_url && (
-                    <div style={{ marginTop: '0.75rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Evidence Uploaded:</span>
-                      <img 
-                        src={editingComplaint.evidence_url} 
-                        alt="Evidence" 
-                        style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-light)', marginTop: '0.25rem' }} 
-                      />
-                    </div>
-                  )}
+                  {/* Evidence display removed per client request */}
                 </div>
 
                 <div className="form-grid">

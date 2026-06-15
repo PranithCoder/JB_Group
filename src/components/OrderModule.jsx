@@ -92,7 +92,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
           order_id: fitonOrder.id,
           description: `Fit-on issue: ${fitonDescription}`,
           assigned_staff_id: fitonTailorId,
-          evidence_url: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=300&auto=format&fit=crop',
+          evidence_url: '',
           status: 'In Review',
           resolution_notes: ''
         });
@@ -453,14 +453,77 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
   };
 
   const viewAuditLog = (order) => {
-    // Generate simulated edit logs based on order id for the auditing audit component
-    const edits = [
-      { user: 'Abi', action: 'Created Order', date: order.order_date, detail: 'Initial entry' }
-    ];
-    if (order.status === 'completed') {
-      edits.push({ user: 'Thuvaragan', action: 'Marked Completed', date: order.delivery_date, detail: 'Quality inspection passed' });
+    // Fetch system audit logs matching this order number
+    const relevantLogs = db.getAuditLogs().filter(log => 
+      (log.action && log.action.includes(order.order_no)) || 
+      (log.details && log.details.includes(order.order_no))
+    );
+
+    // Fetch complaints matching this order ID
+    const relevantComplaints = db.getComplaints().filter(c => c.order_id === order.id);
+
+    // Build combined timeline events
+    const timelineEvents = [];
+
+    // Map system audit logs
+    relevantLogs.forEach(log => {
+      timelineEvents.push({
+        date: log.timestamp || order.order_date,
+        user: log.user || 'System',
+        action: log.action,
+        detail: log.details
+      });
+    });
+
+    // Map complaints/fit-on issues
+    relevantComplaints.forEach(comp => {
+      // Add reported event if there is no revert/fit-on log matching it
+      const hasReportedLog = relevantLogs.some(log => 
+        log.action && log.action.includes('Fit-on Issue') && log.details && log.details.includes(comp.description)
+      );
+      if (!hasReportedLog) {
+        timelineEvents.push({
+          date: comp.date_reported ? `${comp.date_reported} 00:00:00` : order.order_date,
+          user: 'Customer / Staff',
+          action: `Fit-on Issue Registered`,
+          detail: `Complaint Ticket filed. Issue description: "${comp.description}". Status: ${comp.status}.`
+        });
+      }
+
+      // Add resolved event fallback if status is Resolved and no resolved log exists
+      if (comp.status === 'Resolved') {
+        const hasResolvedLog = relevantLogs.some(log => 
+          log.action && log.action.includes('Resolved Complaint') && log.details && log.details.includes(comp.id)
+        );
+        if (!hasResolvedLog) {
+          timelineEvents.push({
+            date: comp.date_reported ? `${comp.date_reported} 23:59:59` : order.order_date,
+            user: comp.assignedStaff?.name || 'Tailor',
+            action: `Fit-on Issue Resolved`,
+            detail: `Complaint fixed. Notes: "${comp.resolution_notes || 'No notes provided.'}".`
+          });
+        }
+      }
+    });
+
+    // Sort chronologically (oldest first)
+    timelineEvents.sort((a, b) => {
+      const dateA = new Date(a.date.replace(/-/g, '/'));
+      const dateB = new Date(b.date.replace(/-/g, '/'));
+      return dateA - dateB;
+    });
+
+    // If timeline is empty, add a default booked entry based on order properties
+    if (timelineEvents.length === 0) {
+      timelineEvents.push({
+        date: `${order.order_date} 00:00:00`,
+        user: 'Officer',
+        action: `Created Order ${order.order_no}`,
+        detail: `Order booked for customer. Amount: Rs. ${Number(order.amount).toFixed(2)}. Service: ${order.service_type} (${order.dress_type}).`
+      });
     }
-    setViewingAudit({ order, edits });
+
+    setViewingAudit({ order, edits: timelineEvents });
   };
 
   const isReadOnly = activeRole === 'boss';
@@ -1317,19 +1380,19 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
           return 'Good evening';
         })();
 
-        const messageText = `✨ *JB GROUPS* ✨\n` +
+        const messageText = `*JB GROUPS*\n` +
           `-----------------------------------\n` +
-          `👋 ${greeting} *${customer.name}*,\n\n` +
-          `🎉 Your tailor booking is *confirmed*!\n\n` +
-          `📌 *Booking Details*:\n` +
-          `🎫 *Order No:* ${newlyBookedOrder.order_no}\n` +
-          (newlyBookedOrder.bill_no ? `🧾 *Bill No:* ${newlyBookedOrder.bill_no}\n` : '') +
-          `🧵 *Service:* ${newlyBookedOrder.service_type} (${newlyBookedOrder.dress_type || 'Custom'})\n` +
-          `💰 *Total Price:* Rs. ${Number(newlyBookedOrder.amount).toFixed(2)}\n` +
-          `💳 *Payment:* ${paymentLabel}\n` +
-          `📅 *Estimated Delivery:* ${newlyBookedOrder.delivery_date}\n\n` +
+          `${greeting} *${customer.name}*,\n\n` +
+          `Your tailor booking is *confirmed*!\n\n` +
+          `*Booking Details*:\n` +
+          `*Order No:* ${newlyBookedOrder.order_no}\n` +
+          (newlyBookedOrder.bill_no ? `*Bill No:* ${newlyBookedOrder.bill_no}\n` : '') +
+          `*Service:* ${newlyBookedOrder.service_type} (${newlyBookedOrder.dress_type || 'Custom'})\n` +
+          `*Total Price:* Rs. ${Number(newlyBookedOrder.amount).toFixed(2)}\n` +
+          `*Payment:* ${paymentLabel}\n` +
+          `*Estimated Delivery:* ${newlyBookedOrder.delivery_date}\n\n` +
           `-----------------------------------\n` +
-          `🙏 Thank you for choosing *JB Groups Tailoring Shop*!`;
+          `Thank you for choosing *JB Groups Tailoring Shop*!`;
 
         const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
 

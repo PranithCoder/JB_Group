@@ -563,6 +563,43 @@ export const db = {
           updatedOrder.delivered_date = getDateOffset(0);
           updatedOrder.completed_date = getDateOffset(0);
         }
+
+        // Log status transitions if they changed
+        if (original && original.status !== order.status) {
+          if (order.status === 'delivered') {
+            this.addAuditLog(
+              `Delivered Order ${order.order_no}`,
+              `Order delivered to customer. Bill No: ${order.bill_no || 'N/A'}. Payment Status: ${order.payment_status}.`
+            );
+          } else if (order.status === 'cancelled') {
+            this.addAuditLog(
+              `Cancelled Order ${order.order_no}`,
+              `Order cancelled. Reason: ${order.cancellation_reason || 'N/A'}.`
+            );
+          } else if (order.status === 'completed') {
+            const role = this.getActiveRole();
+            if (role !== 'tailor') {
+              this.addAuditLog(
+                `Completed Order ${order.order_no}`,
+                `Marked as Completed by ${role === 'none' ? 'System' : role}.`
+              );
+            }
+          } else if (order.status === 'in-progress') {
+            const role = this.getActiveRole();
+            if (role !== 'tailor') {
+              this.addAuditLog(
+                `Order In-Progress: ${order.order_no}`,
+                `Status updated to In-Progress by ${role === 'none' ? 'System' : role}.`
+              );
+            }
+          } else if (order.status === 'pending') {
+            this.addAuditLog(
+              `Order Reverted: ${order.order_no}`,
+              `Status updated to Pending.`
+            );
+          }
+        }
+
         list[index] = { ...list[index], ...updatedOrder };
         syncToFirestore('orders', list[index]);
         // If order gets completed, automatically decrement some stock for demo
@@ -587,6 +624,12 @@ export const db = {
       }
       list.unshift(order);
       syncToFirestore('orders', order);
+
+      // Log order creation
+      this.addAuditLog(
+        `Created Order ${order.order_no}`,
+        `Order booked for customer. Amount: Rs. ${Number(order.amount).toFixed(2)}. Service: ${order.service_type} (${order.dress_type}).`
+      );
 
       // Increment customer's order history
       const customers = this.getCustomers();
@@ -969,10 +1012,12 @@ export const db = {
     const list = safeGetLocalStorage('jb_complaints', []);
     let isNew = false;
     let savedComplaint;
+    let originalStatus = '';
     
     if (complaint.id) {
       const index = list.findIndex(c => c.id === complaint.id);
       if (index !== -1) {
+        originalStatus = list[index].status;
         list[index] = { ...list[index], ...complaint };
         savedComplaint = list[index];
       }
@@ -993,6 +1038,21 @@ export const db = {
       this.triggerCustomerNotification(complaint, 'Complaint Registered');
     } else if (complaint.status === 'Resolved') {
       this.triggerCustomerNotification(complaint, 'Complaint Resolved');
+
+      // Log resolution in audit logs if it just transitioned to Resolved
+      if (originalStatus !== 'Resolved') {
+        const staffList = this.getStaff();
+        const staffObj = staffList.find(s => s.id === complaint.assigned_staff_id);
+        const staffName = staffObj ? staffObj.name : 'Unassigned';
+        const ordersList = this.getOrders();
+        const orderObj = ordersList.find(o => o.id === complaint.order_id);
+        const orderNo = orderObj ? orderObj.order_no : 'N/A';
+        
+        this.addAuditLog(
+          `Resolved Complaint for Order ${orderNo}`,
+          `Complaint (ID: ${complaint.id}) resolved. Notes: "${complaint.resolution_notes || ''}". Fixed by: ${staffName}.`
+        );
+      }
     }
 
     return savedComplaint || complaint;
