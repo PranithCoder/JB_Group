@@ -1390,7 +1390,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
           `*Service:* ${newlyBookedOrder.service_type} (${newlyBookedOrder.dress_type || 'Custom'})\n` +
           `*Total Price:* Rs. ${Number(newlyBookedOrder.amount).toFixed(2)}\n` +
           `*Payment:* ${paymentLabel}\n` +
-          `*Estimated Delivery:* ${newlyBookedOrder.delivery_date}\n\n` +
+          `*Estimated Delivery:* ${newlyBookedOrder.delivery_date} at ${newlyBookedOrder.delivery_time || '17:00'}\n\n` +
           `-----------------------------------\n` +
           `Thank you for choosing *JB Groups Tailoring Shop*!`;
 
