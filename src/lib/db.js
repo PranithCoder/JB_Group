@@ -838,10 +838,11 @@ export const db = {
     // Filter attendance for the selected month (starts with monthYearString)
     const monthRecords = attendance.filter(a => a.date && a.date.startsWith(monthYearString));
 
-    // Filter completed/delivered orders for the selected month
+    // Filter completed/delivered orders for the selected month with QA photos
     const completedMonthOrders = orders.filter(o => 
       (o.status === 'completed' || o.status === 'delivered') && 
-      o.completed_date && o.completed_date.startsWith(monthYearString)
+      o.completed_date && o.completed_date.startsWith(monthYearString) &&
+      o.photo_front && o.photo_back
     );
 
     return staff.map(emp => {

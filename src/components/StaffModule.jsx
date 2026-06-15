@@ -462,7 +462,7 @@ export default function StaffModule({ activeRole, triggerUpdate }) {
       // Track commission
       let totalCommission = 0;
       ordersList.forEach(o => {
-        if (o.status === 'completed' || o.status === 'delivered') {
+        if ((o.status === 'completed' || o.status === 'delivered') && o.photo_front && o.photo_back) {
           if (o.cutting_staff_id === s.id) {
             totalCommission += o.amount * 0.5 * 0.3;
           }

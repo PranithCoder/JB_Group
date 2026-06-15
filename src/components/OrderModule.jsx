@@ -79,7 +79,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         status: 'pending',
         is_urgent: true,
         assigned_staff_id: fitonTailorId,
-        cutting_staff_id: fitonTailorId,
+        cutting_staff_id: fitonOrder.cutting_staff_id || '',
         completed_date: '',
         note: `${fitonOrder.note ? fitonOrder.note + '\n' : ''}[Fit-on Issue - High Priority]: ${fitonDescription}`
       };
