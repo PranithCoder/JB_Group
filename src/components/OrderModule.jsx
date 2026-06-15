@@ -14,6 +14,51 @@ const formatWhatsAppPhone = (phoneStr) => {
   return clean;
 };
 
+const getUniqueWishes = (dressType) => {
+  const typeLower = (dressType || '').toLowerCase();
+  
+  const traditionalWishes = [
+    "We hope this traditional stitching brings absolute elegance, charm, and grace to your saree drape!",
+    "Crafted with exquisite detail to bring out the finest traditional and ethnic look for your special moments!",
+    "Tailored beautifully to complement your style. May it add a touch of timeless traditional grace to your wardrobe!",
+    "May this custom fit blouse make you shine with beauty and traditional elegance at your next event!",
+    "Stitched to perfection to offer both comfort and that stunning, elegant traditional grace!"
+  ];
+
+  const modernWishes = [
+    `We hope this custom-tailored ${typeLower} fits you perfectly and elevates your modern style!`,
+    `Crafted to match your unique fashion sense, wishing you comfort and absolute confidence in this modern fit!`,
+    `Designed to fit you beautifully and add a chic, stylish addition to your wardrobe collection!`,
+    `May this chic ${typeLower} bring out your grace and keep you looking fabulous and confident!`,
+    `Tailored with detail to ensure you feel comfortable, trendy, and beautiful every time you wear it!`
+  ];
+
+  const genericWishes = [
+    "We hope this custom fit brings you joy, style, and absolute comfort!",
+    "Designed and stitched to fit you beautifully and elevate your style!",
+    "Tailored to perfection with love and detail to fit you perfectly!"
+  ];
+
+  const selectRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  if (typeLower.includes('saree') || typeLower.includes('blouse')) {
+    return selectRandom(traditionalWishes);
+  } else if (
+    typeLower.includes('frock') || 
+    typeLower.includes('salwar') || 
+    typeLower.includes('top') || 
+    typeLower.includes('leghanga') || 
+    typeLower.includes('skirt') ||
+    typeLower.includes('modern') ||
+    typeLower.includes('trouser') ||
+    typeLower.includes('shirt')
+  ) {
+    return selectRandom(modernWishes);
+  } else {
+    return selectRandom(genericWishes);
+  }
+};
+
 export default function OrderModule({ activeRole, triggerUpdate }) {
   const [orders, setOrders] = useState(db.getOrders());
   const completedUndeliveredCount = orders.filter(o => o.status === 'completed').length;
@@ -47,7 +92,17 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
       ? `Partially Paid (Paid: Rs. ${Number(order.amount_paid || 0).toFixed(2)}, Bal: Rs. ${Number(order.amount - (order.amount_paid || 0)).toFixed(2)})`
       : `Unpaid (Bal: Rs. ${Number(order.amount).toFixed(2)})`;
 
-    const messageText = `Dear ${order.customer?.name || 'Customer'},\n\nYour tailoring order *${order.order_no}* is now completed and ready for pickup!\n\nDetails:\n- Service: ${order.service_type} (${order.dress_type})\n- Total Amount: Rs. ${Number(order.amount || 0).toFixed(2)}\n- Payment Status: ${paymentLabel}\n\nPlease visit JB Groups Tailoring Shop to collect your item.\n\nThank you!`;
+    const wishes = getUniqueWishes(order.dress_type);
+
+    const messageText = `Dear ${order.customer?.name || 'Customer'},\n\n` +
+      `Your tailoring order *${order.order_no}* is now completed and ready for pickup!\n\n` +
+      `${wishes}\n\n` +
+      `Details:\n` +
+      `- Service: ${order.service_type} (${order.dress_type})\n` +
+      `- Total Amount: Rs. ${Number(order.amount || 0).toFixed(2)}\n` +
+      `- Payment Status: ${paymentLabel}\n\n` +
+      `Please visit JB Groups Tailoring Shop to collect your item.\n\n` +
+      `Thank you!`;
     
     setCustomNotifyMsg(messageText);
   };
@@ -938,16 +993,16 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
                               className="btn btn-secondary btn-sm"
                               style={{ 
                                 padding: '0.25rem 0.5rem',
-                                borderColor: '#25D366',
-                                color: '#25D366',
-                                backgroundColor: '#f0fdf4',
+                                borderColor: ord.is_notified ? '#94a3b8' : '#25D366',
+                                color: ord.is_notified ? '#64748b' : '#25D366',
+                                backgroundColor: ord.is_notified ? '#f8fafc' : '#f0fdf4',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '0.25rem'
                               }}
                               title="Notify Customer via WhatsApp & Share Photos"
                             >
-                              💬 Notify
+                              {ord.is_notified ? '✓ Notified' : '💬 Notify'}
                             </button>
                           )}
                           {!isReadOnly && (ord.status === 'completed' || ord.status === 'delivered') && (
@@ -1633,6 +1688,20 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
         const cleanPhone = formatWhatsAppPhone(customer.contact);
         
         const handleSend = () => {
+          // Mark as notified in database & write audit log
+          try {
+            db.saveOrder({
+              ...notifyingOrder,
+              is_notified: true
+            });
+            db.addAuditLog(
+              `Notified Customer: ${notifyingOrder.order_no}`,
+              `WhatsApp completion notification sent to customer ${customer.name}.`
+            );
+          } catch (err) {
+            console.error("Error saving is_notified status:", err);
+          }
+
           // Copy message to clipboard
           navigator.clipboard.writeText(customNotifyMsg).then(() => {
             // Automatically download files if they exist
@@ -1650,11 +1719,16 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
             const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(customNotifyMsg)}`;
             window.open(waLink, '_blank');
             setNotifyingOrder(null);
+            refreshList();
+            triggerUpdate();
           }).catch(err => {
             console.error('Failed to copy text: ', err);
             // Fallback: just open link
             const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(customNotifyMsg)}`;
             window.open(waLink, '_blank');
+            setNotifyingOrder(null);
+            refreshList();
+            triggerUpdate();
           });
         };
 
