@@ -1382,7 +1382,7 @@ export default function OrderModule({ activeRole, triggerUpdate }) {
 
         const messageText = `*JB GROUPS*\n` +
           `-----------------------------------\n` +
-          `${greeting} *${customer.name}*,\n\n` +
+          `${greeting} ${customer.name},\n\n` +
           `Your tailor booking is *confirmed*!\n\n` +
           `*Booking Details*:\n` +
           `*Order No:* ${newlyBookedOrder.order_no}\n` +
